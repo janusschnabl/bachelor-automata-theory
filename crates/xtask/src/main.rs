@@ -51,7 +51,7 @@ async fn run() -> Result<()> {
 
             // NOTE: Setup new crate
             sh.change_dir(project_root());
-            sh.change_dir("envs");
+            sh.change_dir("crates/envs");
             cmd!(sh, "cargo new --lib {crate_name}").run()?;
             sh.change_dir(&crate_name);
 
@@ -68,7 +68,7 @@ async fn run() -> Result<()> {
             sh.change_dir(project_root());
             let toml = sh.read_file("Cargo.toml")?;
             let mut doc = toml.parse::<DocumentMut>()?;
-            let table = [("path".to_string(), format!("./envs/{crate_name}"))]
+            let table = [("path".to_string(), format!("./crates/envs/{crate_name}"))]
                 .into_iter()
                 .collect::<toml_edit::InlineTable>();
             doc["workspace"]["dependencies"]
@@ -86,7 +86,7 @@ async fn run() -> Result<()> {
 
             // NOTE: Add crate to shell
             sh.change_dir(project_root());
-            sh.change_dir("ce-shell");
+            sh.change_dir("crates/ce-shell");
             cmd!(sh, "cargo add {crate_name}").run()?;
             let shell_file = "src/lib.rs";
             let shell = sh.read_file(shell_file)?;
@@ -119,7 +119,7 @@ async fn run() -> Result<()> {
 
             // NOTE: Create +page for the new environment
             sh.change_dir(project_root());
-            sh.change_dir("inspectify-app/src/routes/env");
+            sh.change_dir("apps/inspectify/src/routes/(inspectify)/env");
 
             let template_src = include_str!(
                 "../../../apps/inspectify/src/routes/(inspectify)/env/Template/+page.svelte"
@@ -203,7 +203,7 @@ async fn run() -> Result<()> {
 fn project_root() -> PathBuf {
     Path::new(&env!("CARGO_MANIFEST_DIR"))
         .ancestors()
-        .nth(1)
+        .nth(2)
         .unwrap()
         .to_path_buf()
 }
