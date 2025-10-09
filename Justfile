@@ -84,3 +84,43 @@ patch-windows-machine:
     ssh {{WIN_REMOTE_HOST}} taskkill /IM "inspectify.exe" /F
     scp target/x86_64-pc-windows-gnu/release/inspectify.exe {{WIN_REMOTE_HOST}}:{{WIN_REMOTE_PATH}}
     ssh {{WIN_REMOTE_HOST}} 'cmd.exe /c "cd /Users/oembo/checkr-test/fsharp-starter && inspectify.exe"'
+
+# Download the latest binaries from https://github.com/team-checkr/checkr/releases/latest
+update-inspectify-binaries:
+    #!/bin/bash
+    git clone --depth 1 git@github.com:team-checkr/inspectify-binaries.git || true
+    cd inspectify-binaries
+    git pull
+
+    rm -rf temp
+    mkdir temp
+    cd temp
+
+    curl -fL -o "inspectify-aarch64-apple-darwin.tar.xz"  "https://github.com/team-checkr/checkr/releases/latest/download/inspectify-aarch64-apple-darwin.tar.xz"
+    curl -fL -o "inspectify-x86_64-apple-darwin.tar.xz" "https://github.com/team-checkr/checkr/releases/latest/download/inspectify-x86_64-apple-darwin.tar.xz"
+    curl -fL -o "inspectify-x86_64-pc-windows-msvc.zip"      "https://github.com/team-checkr/checkr/releases/latest/download/inspectify-x86_64-pc-windows-msvc.zip"
+    curl -fL -o "inspectify-x86_64-unknown-linux-gnu.tar.xz" "https://github.com/team-checkr/checkr/releases/latest/download/inspectify-x86_64-unknown-linux-gnu.tar.xz"
+
+    # Extract each archive into the same temp dir
+    tar -xJf "inspectify-aarch64-apple-darwin.tar.xz"
+    tar -xJf "inspectify-x86_64-apple-darwin.tar.xz"
+    unzip -o "inspectify-x86_64-pc-windows-msvc.zip" -d "inspectify-x86_64-pc-windows-msvc" >/dev/null 2>&1
+    tar -xJf "inspectify-x86_64-unknown-linux-gnu.tar.xz"
+
+    cp "inspectify-aarch64-apple-darwin/inspectify" ../inspectify-macos-arm64
+    cp "inspectify-x86_64-apple-darwin/inspectify" ../inspectify-macos-x86_64
+    cp "inspectify-x86_64-pc-windows-msvc/inspectify.exe" ../inspectify-win.exe
+    cp "inspectify-x86_64-unknown-linux-gnu/inspectify" ../inspectify-linux
+
+    cd ..
+    rm -rf temp
+
+    strip inspectify-macos-arm64 || true
+    strip inspectify-macos-x86_64 || true
+    strip inspectify-linux || true
+
+    if [ -n "$(git status --porcelain)" ]; then
+        git add . && git commit -m "Update binaries from checkr release" && git push
+    else
+        echo "No changes to commit"
+    fi
