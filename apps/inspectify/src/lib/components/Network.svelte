@@ -27,13 +27,12 @@
 
         node.color = {
           background: mirage.ui.fg.hex(),
-          border: 'white',
+          border: '#85CC95',
           highlight: mirage.ui.fg.brighten(1).hex(),
         };
-        // FJERN HVIS FOR MEGET, HVIS IKKE TYDELIGT ER DET GLOW
         node.shadow = {
           enabled: true,
-          color: 'white',
+          color: '#85CC95',
           size: 25,
           x: 0,
           y: 0,
