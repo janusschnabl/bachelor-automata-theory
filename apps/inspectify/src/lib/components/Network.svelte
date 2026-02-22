@@ -18,6 +18,29 @@
     if (preDot != dot) return;
     const data = vis.parseDOTNetwork(dot);
 
+    // EVT TODO. LAV EN CUSTOM SHAPE HERUNDER MED DOBBELTCIRKEL
+    data.nodes.forEach((node: any) => {
+      if (node.isAccepting) {
+        node.shape = 'circle';
+        node.size = 28;
+        node.borderWidth = 2;
+
+        node.color = {
+          background: mirage.ui.fg.hex(),
+          border: 'white',
+          highlight: mirage.ui.fg.brighten(1).hex(),
+        };
+        // FJERN HVIS FOR MEGET, HVIS IKKE TYDELIGT ER DET GLOW
+        node.shadow = {
+          enabled: true,
+          color: 'white',
+          size: 25,
+          x: 0,
+          y: 0,
+        };
+      }
+    });
+
     if (network) {
       network.setData(data);
     } else {
