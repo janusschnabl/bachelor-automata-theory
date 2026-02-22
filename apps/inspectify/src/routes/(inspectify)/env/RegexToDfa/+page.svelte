@@ -1,7 +1,7 @@
 <script lang="ts">
   import Env from '$lib/components/Env.svelte';
   import StandardInput from '$lib/components/StandardInput.svelte';
-  import Network from '$lib/components/Network.svelte';
+  import Network from '$lib/components/NetworkAutomata.svelte';
   import { Io } from '$lib/io.svelte';
 
   const io = new Io('RegexToDfa', { regex: 'skip' });
