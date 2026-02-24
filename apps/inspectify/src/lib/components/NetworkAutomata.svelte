@@ -12,16 +12,28 @@
   let network: Network | undefined = $state();
   let selectedNodes = $state(new Set<string>());
 
+  //Makes edge from invisible node to match standard notation for initial nodes
+  function injectInitialNodes(dot: string): string {
+    return dot.replace(
+      /(\w+)\s*\[[^\]]*isInitial\s*=\s*true[^\]]*\]/gi,
+      (match, nodeId) => {
+        const secretId = `__init_${nodeId}__`;
+        return `${match}\n  ${secretId} [isHidden=true label=""]\n  ${secretId} -> ${nodeId}`;
+      }
+    );
+  }
+
   let redraw = $derived(async () => {
     let preDot = dot;
     const vis = await import('vis-network/esnext');
     if (preDot != dot) return;
 
-    const data = vis.parseDOTNetwork(dot);
+    const data = vis.parseDOTNetwork(injectInitialNodes(dot));
 
     data.nodes.forEach((node: any) => {
       const outerR = 15;
       const isAccepting = node.isAccepting;
+      const isHidden = node.isHidden;
       const innerR = 11;
       const bg = mirage.ui.fg.hex();
       const highlightBg = mirage.ui.fg.brighten(1).hex();
@@ -34,6 +46,7 @@
       node.ctxRenderer = ({ ctx, x, y }: any) => {
         return {
           drawNode() {
+            if(!isHidden){
             const selected = selectedNodes.has(String(nodeId));
             const currentBg = selected ? highlightBg : bg;
             const currentBorder = selected ? '#ffffff' : borderColor;
@@ -68,6 +81,7 @@
               ctx.textBaseline = 'middle';
               ctx.fillText(label, x, y);
             }
+          }
           },
           nodeDimensions: { width: outerR * 2, height: outerR * 2 },
         };
