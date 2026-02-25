@@ -9,7 +9,10 @@ license.workspace = true
 [dependencies]
 ce-core.workspace = true
 itertools.workspace = true
-serde.workspace = true
+petgraph.workspace = true
+rand.workspace = true
+regex-syntax = "0.8.10"
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tapi.workspace = true
 tracing.workspace = true
