@@ -44,9 +44,11 @@ impl Env for RegexToDfaEnv {
         let mut nfa = EpsilonNfa::new();
 
         let (_start, _accept) = nfa.build_from_hir(&ast);
+        nfa.start = _start;
+        nfa.accept = _accept;
 
         Ok(Output {
-            dot: format!("{}", nfa),
+            dot: format!("start: {}\naccept: {}\n\n{}", nfa.start, nfa.accept, nfa),
         })
     }
 
@@ -64,33 +66,10 @@ impl Generate for Input {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Symbol {
-    Epsilon,
-    Byte(u8),
-}
-
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Symbol::Epsilon => write!(f, "ε"),
-            Symbol::Byte(b) => {
-                if b.is_ascii_graphic() {
-                    write!(f, "'{}'", *b as char)
-                } else {
-                    write!(f, "0x{:02X}", b)
-                }
-            }
-        }
-    }
-}
-#[derive(Debug, Clone ,Default)]
-pub struct EpsilonNfa {
-    pub states: Vec<State>,
-}
 impl EpsilonNfa {
     fn build_from_hir(&mut self, hir: &Hir) -> (usize, usize) {
         match hir.kind() {
+            //Classic algorithm:
             HirKind::Literal(lit) => {
                 self.build_literal(&lit.0)
             }
@@ -100,13 +79,19 @@ impl EpsilonNfa {
             HirKind::Concat(subs) => {
                 self.build_concat(subs)
             }
-
+            HirKind::Repetition(rep) => {
+                self.build_repetition(rep)
+            }
             HirKind::Empty => {
                 self.build_empty()
             }
 
+            //library artifacts:
             HirKind::Class(class) => {
                 self.build_class(class)
+            }
+            HirKind::Capture(cap) => {
+                self.build_from_hir(&cap.sub)
             }
 
             _ => panic!("Unsupported HIR node for now {:?}", hir.kind()),
@@ -155,7 +140,49 @@ impl EpsilonNfa {
 
         (start, accept)
     }
+    fn build_repetition(&mut self, rep: &regex_syntax::hir::Repetition) -> (usize, usize) {
+        match (rep.min, rep.max) {
+            // *
+            (0, None) => {
+                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub);
 
+                let start = self.add_state();
+                let accept = self.add_state();
+
+                // ε -> sub
+                self.add_transition(start, Symbol::Epsilon, sub_start);
+                // ε -> accept
+                self.add_transition(start, Symbol::Epsilon, accept);
+
+                // loop
+                self.add_transition(sub_accept, Symbol::Epsilon, sub_start);
+                // exit
+                self.add_transition(sub_accept, Symbol::Epsilon, accept);
+
+                (start, accept)
+            }
+
+            // +
+            (1, None) => {
+                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub);
+
+                let start = self.add_state();
+                let accept = self.add_state();
+
+                // must go through sub once
+                self.add_transition(start, Symbol::Epsilon, sub_start);
+
+                // loop
+                self.add_transition(sub_accept, Symbol::Epsilon, sub_start);
+                // exit
+                self.add_transition(sub_accept, Symbol::Epsilon, accept);
+
+                (start, accept)
+            }
+
+            _ => panic!("Only * and + supported"),
+        }
+    }
     fn build_class(&mut self, class: &Class) -> (usize, usize) {
         let start = self.add_state();
         let accept = self.add_state();
@@ -210,6 +237,33 @@ impl EpsilonNfa {
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Symbol {
+    Epsilon,
+    Byte(u8),
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Symbol::Epsilon => write!(f, "ε"),
+            Symbol::Byte(b) => {
+                if b.is_ascii_graphic() {
+                    write!(f, "'{}'", *b as char)
+                } else {
+                    write!(f, "0x{:02X}", b)
+                }
+            }
+        }
+    }
+}
+#[derive(Debug, Clone ,Default)]
+pub struct EpsilonNfa {
+    pub states: Vec<State>,
+    pub start: usize,
+    pub accept: usize,
 }
 impl fmt::Display for EpsilonNfa {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
