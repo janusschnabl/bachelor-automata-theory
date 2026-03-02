@@ -14,7 +14,9 @@
   {#snippet outputView({ output, referenceOutput })}
   {console.log(output.dot)}
   <div class="relative">
-      <pre>{output.dot || ''} </pre>
+    <div class="absolute inset-0 grid overflow-auto">
+      <Network dot={output.dot || ''} />
     </div>
+  </div>
     {/snippet}
 </Env>

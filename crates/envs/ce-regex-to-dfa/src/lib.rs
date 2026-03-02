@@ -46,9 +46,9 @@ impl Env for RegexToDfaEnv {
         let (_start, _accept) = nfa.build_from_hir(&ast);
         nfa.start = _start;
         nfa.accept = _accept;
-
+        
         Ok(Output {
-            dot: format!("start: {}\naccept: {}\n\n{}", nfa.start, nfa.accept, nfa),
+            dot: nfa.to_dot(),
         })
     }
 
@@ -264,6 +264,48 @@ pub struct EpsilonNfa {
     pub states: Vec<State>,
     pub start: usize,
     pub accept: usize,
+}
+impl EpsilonNfa {
+    pub fn to_dot(&self) -> String {
+        let mut s = String::new();
+
+        s.push_str("digraph NFA {\n");
+        s.push_str("  rankdir=LR;\n");
+
+        // Nodes
+        for (i, _) in self.states.iter().enumerate() {
+            let mut attrs = Vec::new();
+
+            if i == self.start {
+                attrs.push("isInitial=true");
+            }
+            if i == self.accept {
+                attrs.push("isAccepting=true");
+            }
+
+            if attrs.is_empty() {
+                s.push_str(&format!("  {};\n", i));
+            } else {
+                s.push_str(&format!("  {} [{}];\n", i, attrs.join(", ")));
+            }
+        }
+
+        s.push('\n');
+
+        // Edges
+        for (from, state) in self.states.iter().enumerate() {
+            for (symbol, to) in &state.transitions {
+                s.push_str(&format!(
+                    "  {} -> {} [label=\"{}\"];\n",
+                    from, to, symbol
+                ));
+            }
+        }
+
+        s.push_str("}\n");
+
+        s
+    }
 }
 impl fmt::Display for EpsilonNfa {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
