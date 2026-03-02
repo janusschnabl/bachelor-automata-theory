@@ -2,7 +2,6 @@ use ce_core::{Env, Generate, ValidationResult, define_env, rand,EnvError};
 use serde::{Deserialize, Serialize};
 use regex_syntax::{Parser,ParserBuilder, hir::{Hir, HirKind,Class}};
 use std::fmt;
-
 define_env!(RegexToDfaEnv);
 
 
@@ -25,8 +24,16 @@ impl Env for RegexToDfaEnv {
     type Meta = ();
 
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
+        if !input.regex.is_ascii() {
+            return Err(EnvError::InvalidInputForProgram {
+                message: "Only ASCII regex supported".into(),
+                source: None,
+            });
+        }
+
          let ast = ParserBuilder::new()
             .unicode(false)
+            .utf8(false)
             .build()
             .parse(&input.regex)
             .map_err(|e| EnvError::InvalidInputForProgram {
@@ -97,6 +104,7 @@ impl EpsilonNfa {
             HirKind::Class(class) => {
                 self.build_class(class)
             }
+
             _ => panic!("Unsupported HIR node for now {:?}", hir.kind()),
         }
     }
@@ -156,8 +164,20 @@ impl EpsilonNfa {
                     }
                 }
             }
-            Class::Unicode(_) => {
-                panic!("Unicode classes not supported yet");
+            Class::Unicode(unicode) => {
+                for range in unicode.iter() {
+                    let start_u = range.start() as u32;
+                    let end_u = range.end() as u32;
+
+                    // Only allow ASCII / byte-range characters
+                    if end_u > 255 {
+                        panic!("Non-ASCII character class not supported");
+                    }
+
+                    for b in start_u..=end_u {
+                        self.add_transition(start, Symbol::Byte(b as u8), accept);
+                    }
+                }
             }
         }
 
