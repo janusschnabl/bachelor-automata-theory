@@ -4,7 +4,7 @@
   import Network from '$lib/components/NetworkAutomata.svelte';
   import { Io } from '$lib/io.svelte';
 
-  const io = new Io('RegexToDfa', { regex: 'skip' });
+  const io = new Io('RegexToDfa', { regex: '' });
 </script>
 
 <Env {io}>

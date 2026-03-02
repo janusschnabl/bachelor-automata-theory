@@ -101,6 +101,10 @@ impl EpsilonNfa {
                 self.build_concat(subs)
             }
 
+            HirKind::Empty => {
+                self.build_empty()
+            }
+
             HirKind::Class(class) => {
                 self.build_class(class)
             }
@@ -181,6 +185,13 @@ impl EpsilonNfa {
             }
         }
 
+        (start, accept)
+    }
+
+    fn build_empty(&mut self) -> (usize, usize) {
+        let start = self.add_state();
+        let accept = self.add_state();
+        self.add_transition(start, Symbol::Epsilon, accept);
         (start, accept)
     }
 
