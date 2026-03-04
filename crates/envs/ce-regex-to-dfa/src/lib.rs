@@ -68,7 +68,7 @@ impl EpsilonNfa {
     fn build_from_hir(&mut self, hir: &Hir) -> (usize, usize) {
         match hir.kind() {
             //Classic algorithm:
-            HirKind::Literal(lit) => self.build_literal(&lit.0), //Is a collection of chars, but should be treated as a bunch of concatenations
+            HirKind::Literal(lit) => self.build_literal(&lit.0),
             HirKind::Alternation(subs) => self.build_alternation(subs),
             HirKind::Concat(subs) => self.build_concat(subs),
             HirKind::Repetition(rep) => self.build_repetition(rep),
@@ -177,7 +177,9 @@ impl EpsilonNfa {
             Class::Bytes(bytes) => {
                 for range in bytes.iter() {
                     for b in range.start()..=range.end() {
-                        self.add_transition(start, Symbol::Byte(b), accept);
+                        let (s, a) = self.build_literal(&[b as u8]);
+                        self.add_transition(start, Symbol::Byte(b), s);
+                        self.add_transition(a, Symbol::Epsilon, accept);
                     }
                 }
             }
@@ -192,7 +194,9 @@ impl EpsilonNfa {
                     }
 
                     for b in start_u..=end_u {
-                        self.add_transition(start, Symbol::Byte(b as u8), accept);
+                        let (s, a) = self.build_literal(&[b as u8]);
+                        self.add_transition(start, Symbol::Epsilon, s);
+                        self.add_transition(a, Symbol::Epsilon, accept);
                     }
                 }
             }
@@ -210,9 +214,13 @@ impl EpsilonNfa {
 
     fn build_literal(&mut self, bytes: &[u8]) -> (usize, usize) {
         assert!(!bytes.is_empty());
+
+        // for single/first byte
         let start = self.add_state();
         let mut accept = self.add_state();
         self.add_transition(start, Symbol::Byte(bytes[0]), accept);
+
+        // for remaining bytes
         for &b in &bytes[1..] {
             let next_start = self.add_state();
             let next_accept = self.add_state();
@@ -240,7 +248,7 @@ impl fmt::Display for Symbol {
             Symbol::Epsilon => write!(f, "ε"),
             Symbol::Byte(b) => {
                 if b.is_ascii_graphic() {
-                    write!(f, "'{}'", *b as char)
+                    write!(f, "{}", *b as char)
                 } else {
                     write!(f, "0x{:02X}", b)
                 }
