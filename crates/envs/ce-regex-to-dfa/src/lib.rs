@@ -68,14 +68,14 @@ impl EpsilonNfa {
     fn build_from_hir(&mut self, hir: &Hir) -> (usize, usize) {
         match hir.kind() {
             //Classic algorithm:
-            HirKind::Literal(lit) => self.build_literal(&lit.0),
+            HirKind::Literal(lit) => self.build_literal(&lit.0), //Is a collection of chars, but should be treated as a bunch of concatenations
             HirKind::Alternation(subs) => self.build_alternation(subs),
             HirKind::Concat(subs) => self.build_concat(subs),
             HirKind::Repetition(rep) => self.build_repetition(rep),
             HirKind::Empty => self.build_empty(),
 
             //library artifacts:
-            HirKind::Class(class) => self.build_class(class),
+            HirKind::Class(class) => self.build_class(class), //Should use Alternation for each possible value
             HirKind::Capture(cap) => self.build_from_hir(&cap.sub),
 
             _ => panic!("Unsupported HIR node for now {:?}", hir.kind()),
@@ -204,20 +204,24 @@ impl EpsilonNfa {
     fn build_empty(&mut self) -> (usize, usize) {
         let start = self.add_state();
         let accept = self.add_state();
+        self.add_transition(start, Symbol::Epsilon, accept);
         (start, accept)
     }
 
     fn build_literal(&mut self, bytes: &[u8]) -> (usize, usize) {
+        assert!(!bytes.is_empty());
         let start = self.add_state();
-        let mut current = start;
-
-        for &b in bytes {
-            let next = self.add_state();
-            self.add_transition(current, Symbol::Byte(b), next);
-            current = next;
+        let mut accept = self.add_state();
+        self.add_transition(start, Symbol::Byte(bytes[0]), accept);
+        for &b in &bytes[1..] {
+            let next_start = self.add_state();
+            let next_accept = self.add_state();
+            self.add_transition(next_start, Symbol::Byte(b), next_accept);
+            self.add_transition(accept, Symbol::Epsilon, next_start);
+            accept = next_accept;
         }
 
-        (start, current)
+        (start, accept)
     }
     pub fn new() -> Self {
         Self::default()
