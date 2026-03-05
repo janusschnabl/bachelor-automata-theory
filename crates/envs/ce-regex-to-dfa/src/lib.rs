@@ -9,7 +9,7 @@ define_env!(RegexToDfaEnv);
 
 #[derive(tapi::Tapi, Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Input {
-    pub regex: String, //temp lige pt, skal evt laves om
+    pub regex: String,
 }
 
 #[derive(tapi::Tapi, Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,6 +66,7 @@ impl Generate for Input {
 
 impl EpsilonNfa {
     fn build_from_hir(&mut self, hir: &Hir) -> (usize, usize) {
+        //TODO: Should return an error, so we don't just panic for no reason.
         match hir.kind() {
             //Classic algorithm:
             HirKind::Literal(lit) => self.build_literal(&lit.0),
@@ -75,7 +76,7 @@ impl EpsilonNfa {
             HirKind::Empty => self.build_empty(),
 
             //library artifacts:
-            HirKind::Class(class) => self.build_class(class), //Should use Alternation for each possible value
+            HirKind::Class(class) => self.build_class(class),
             HirKind::Capture(cap) => self.build_from_hir(&cap.sub),
 
             _ => panic!("Unsupported HIR node for now {:?}", hir.kind()),
@@ -178,7 +179,7 @@ impl EpsilonNfa {
                 for range in bytes.iter() {
                     for b in range.start()..=range.end() {
                         let (s, a) = self.build_literal(&[b as u8]);
-                        self.add_transition(start, Symbol::Byte(b), s);
+                        self.add_transition(start, Symbol::Byte(b), s); //this seems wrong (should it not be epsilon), though the code seems to work, do we ever enter this branch? it might all be unicode
                         self.add_transition(a, Symbol::Epsilon, accept);
                     }
                 }
