@@ -3,6 +3,7 @@ use regex_syntax::{
     Parser, ParserBuilder,
     hir::{Class, Hir, HirKind},
 };
+use regex_to_automata::hello;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 define_env!(RegexToDfaEnv);
