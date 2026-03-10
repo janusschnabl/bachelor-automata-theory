@@ -1,9 +1,11 @@
+pub mod errors;
+pub use crate::errors::{Error, Result};
+
 use regex_syntax::{
     Parser, ParserBuilder,
     hir::{Class, Hir, HirKind},
 };
 use std::fmt;
-
 
 #[derive(Debug, Clone, Default)]
 pub struct EpsilonNfa {
@@ -24,7 +26,7 @@ pub enum Symbol {
 
 
 impl EpsilonNfa {
-    pub fn from_regex(regex: &str) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn from_regex(regex: &str) -> Result<Self>  {
         let ast = ParserBuilder::new()
             .unicode(false)
             .utf8(false)
@@ -32,15 +34,14 @@ impl EpsilonNfa {
             .parse(regex)?;
 
         let mut nfa = EpsilonNfa::new();
-        let (start, accept) = nfa.build_from_hir(&ast);
+        let (start, accept) = nfa.build_from_hir(&ast)?;
         nfa.start = start;
         nfa.accept = accept;
 
         Ok(nfa)
     }
 
-    fn build_from_hir(&mut self, hir: &Hir) -> (usize, usize) {
-        //TODO: Should return an error, so we don't just panic for no reason.
+    fn build_from_hir(&mut self, hir: &Hir) -> Result<(usize, usize)> {
         match hir.kind() {
             //Classic algorithm:
             HirKind::Literal(lit) => self.build_literal(&lit.0),
@@ -53,7 +54,7 @@ impl EpsilonNfa {
             HirKind::Class(class) => self.build_class(class),
             HirKind::Capture(cap) => self.build_from_hir(&cap.sub),
 
-            _ => panic!("Unsupported HIR node for now {:?}", hir.kind()),
+            _ => Err(Error::UnsupportedFeature("unsupported HIR node")),
         }
     }
     fn add_state(&mut self) -> usize {
@@ -67,12 +68,12 @@ impl EpsilonNfa {
     fn add_transition(&mut self, from: usize, symbol: Symbol, to: usize) {
         self.states[from].transitions.push((symbol, to));
     }
-    fn build_alternation(&mut self, subs: &[Hir]) -> (usize, usize) {
+    fn build_alternation(&mut self, subs: &[Hir]) -> Result<(usize, usize)> {
         let start = self.add_state();
         let accept = self.add_state();
 
         for sub in subs {
-            let (sub_start, sub_accept) = self.build_from_hir(sub);
+            let (sub_start, sub_accept) = self.build_from_hir(sub)?;
 
             // start -> branch
             self.add_transition(start, Symbol::Epsilon, sub_start);
@@ -81,17 +82,17 @@ impl EpsilonNfa {
             self.add_transition(sub_accept, Symbol::Epsilon, accept);
         }
 
-        (start, accept)
+        Ok((start, accept))
     }
-    fn build_concat(&mut self, subs: &[Hir]) -> (usize, usize) {
+    fn build_concat(&mut self, subs: &[Hir]) -> Result<(usize, usize)> {
         assert!(!subs.is_empty());
 
         // build first
-        let (mut start, mut accept) = self.build_from_hir(&subs[0]);
+        let (mut start, mut accept) = self.build_from_hir(&subs[0])?;
 
         // chain the rest
         for sub in &subs[1..] {
-            let (next_start, next_accept) = self.build_from_hir(sub);
+            let (next_start, next_accept) = self.build_from_hir(sub)?;
 
             // connect previous accept to next start
             self.add_transition(accept, Symbol::Epsilon, next_start);
@@ -99,13 +100,13 @@ impl EpsilonNfa {
             accept = next_accept;
         }
 
-        (start, accept)
+        Ok((start, accept))
     }
-    fn build_repetition(&mut self, rep: &regex_syntax::hir::Repetition) -> (usize, usize) {
+    fn build_repetition(&mut self, rep: &regex_syntax::hir::Repetition) -> Result<(usize, usize)> {
         match (rep.min, rep.max) {
             // *
             (0, None) => {
-                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub);
+                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub)?;
 
                 let start = self.add_state();
                 let accept = self.add_state();
@@ -120,12 +121,12 @@ impl EpsilonNfa {
                 // exit
                 self.add_transition(sub_accept, Symbol::Epsilon, accept);
 
-                (start, accept)
+                Ok((start, accept))
             }
 
             // +
             (1, None) => {
-                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub);
+                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub)?;
 
                 let start = self.add_state();
                 let accept = self.add_state();
@@ -138,13 +139,13 @@ impl EpsilonNfa {
                 // exit
                 self.add_transition(sub_accept, Symbol::Epsilon, accept);
 
-                (start, accept)
+                Ok((start, accept))
             }
 
-            _ => panic!("Only * and + supported"),
+            _ => Err(Error::UnsupportedFeature("only * and + supported for repetition")),
         }
     }
-    fn build_class(&mut self, class: &Class) -> (usize, usize) {
+    fn build_class(&mut self, class: &Class) -> Result<(usize, usize)> {
         let start = self.add_state();
         let accept = self.add_state();
 
@@ -152,8 +153,8 @@ impl EpsilonNfa {
             Class::Bytes(bytes) => {
                 for range in bytes.iter() {
                     for b in range.start()..=range.end() {
-                        let (s, a) = self.build_literal(&[b as u8]);
-                        self.add_transition(start, Symbol::Byte(b), s); //this seems wrong (should it not be epsilon), though the code seems to work, do we ever enter this branch? it might all be unicode
+                        let (s, a) = self.build_literal(&[b as u8])?;
+                        self.add_transition(start, Symbol::Epsilon, s); //not sure if this branch is ever reached.
                         self.add_transition(a, Symbol::Epsilon, accept);
                     }
                 }
@@ -165,11 +166,11 @@ impl EpsilonNfa {
 
                     // Only allow ASCII / byte-range characters
                     if end_u > 255 {
-                        panic!("Non-ASCII character class not supported");
+                        Err(Error::UnsupportedFeature("non-ASCII character class not supported"))?;
                     }
 
                     for b in start_u..=end_u {
-                        let (s, a) = self.build_literal(&[b as u8]);
+                        let (s, a) = self.build_literal(&[b as u8])?;
                         self.add_transition(start, Symbol::Epsilon, s);
                         self.add_transition(a, Symbol::Epsilon, accept);
                     }
@@ -177,17 +178,17 @@ impl EpsilonNfa {
             }
         }
 
-        (start, accept)
+        Ok((start, accept))
     }
 
-    fn build_empty(&mut self) -> (usize, usize) {
+    fn build_empty(&mut self) -> Result<(usize, usize)> {
         let start = self.add_state();
         let accept = self.add_state();
         self.add_transition(start, Symbol::Epsilon, accept);
-        (start, accept)
+        Ok((start, accept))
     }
 
-    fn build_literal(&mut self, bytes: &[u8]) -> (usize, usize) {
+    fn build_literal(&mut self, bytes: &[u8]) -> Result<(usize, usize)> {
         assert!(!bytes.is_empty());
 
         // for single/first byte
@@ -204,7 +205,7 @@ impl EpsilonNfa {
             accept = next_accept;
         }
 
-        (start, accept)
+        Ok((start, accept))
     }
     pub fn new() -> Self {
         Self::default()
@@ -286,6 +287,7 @@ impl fmt::Display for EpsilonNfa {
         Ok(())
     }
 }
+
 
 
 
