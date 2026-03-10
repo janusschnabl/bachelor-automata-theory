@@ -2164,6 +2164,9 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 [[package]]
 name = "regex-to-automata"
 version = "0.2.14"
+dependencies = [
+ "regex-syntax 0.8.10",
+]
 
 [[package]]
 name = "rle-decode-fast"
