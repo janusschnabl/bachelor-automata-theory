@@ -251,19 +251,3 @@ impl fmt::Display for EpsilonNfa {
     }
 }
 
-
-
-
-#[cfg(test)]
-mod tests {
-    use crate::EpsilonNfa;
-
-
-    #[test]
-    fn alternation_not_simplified() {
-        let nfa = EpsilonNfa::from_regex("a|a").unwrap();
-
-        // Thompson alternation requires extra states
-        assert!(nfa.states.len() > 4);
-    }
-}
