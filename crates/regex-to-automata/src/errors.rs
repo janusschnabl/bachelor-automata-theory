@@ -2,7 +2,7 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum Error {
-    Parse(regex_syntax::Error),
+    Parse(String),
     UnsupportedFeature(&'static str),
     InvalidAutomaton(&'static str),
     Message(String),
@@ -25,6 +25,12 @@ impl std::error::Error for Error {}
 
 impl From<regex_syntax::Error> for Error {
     fn from(e: regex_syntax::Error) -> Self {
-        Error::Parse(e)
+        Error::Parse(e.to_string())
+    }
+}
+
+impl From<regex_syntax::ast::Error> for Error {
+    fn from(e: regex_syntax::ast::Error) -> Self {
+        Error::Parse(e.to_string())
     }
 }

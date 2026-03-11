@@ -22,14 +22,6 @@ impl Env for RegexToDfaEnv {
     type Meta = ();
 
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
-        if !input.regex.is_ascii() {
-            return Err(EnvError::InvalidInputForProgram {
-                message: "Only ASCII regex supported".into(),
-                source: None,
-            });
-        }
-
-
         let nfa = EpsilonNfa::from_regex(&input.regex)
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),

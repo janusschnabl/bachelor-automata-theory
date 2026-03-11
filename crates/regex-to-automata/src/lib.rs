@@ -1,10 +1,7 @@
 pub mod errors;
 pub use crate::errors::{Error, Result};
 
-use regex_syntax::{
-    Parser, ParserBuilder,
-    hir::{Class, Hir, HirKind},
-};
+use regex_syntax::ast::{parse::Parser, Ast};
 use std::fmt;
 
 #[derive(Debug, Clone, Default)]
@@ -26,35 +23,42 @@ pub enum Symbol {
 
 
 impl EpsilonNfa {
-    pub fn from_regex(regex: &str) -> Result<Self>  {
-        let ast = ParserBuilder::new()
-            .unicode(false)
-            .utf8(false)
-            .build()
-            .parse(regex)?;
+    pub fn from_regex(regex: &str) -> Result<Self> {
+        if !regex.is_ascii() {
+            return Err(Error::UnsupportedFeature("only ASCII regex supported"));
+        }
+
+        let ast = Parser::new().parse(regex)?;
 
         let mut nfa = EpsilonNfa::new();
-        let (start, accept) = nfa.build_from_hir(&ast)?;
+        let (start, accept) = nfa.build_from_ast(&ast)?;
         nfa.start = start;
         nfa.accept = accept;
 
         Ok(nfa)
     }
 
-    fn build_from_hir(&mut self, hir: &Hir) -> Result<(usize, usize)> {
-        match hir.kind() {
-            //Classic algorithm:
-            HirKind::Literal(lit) => self.build_literal(&lit.0),
-            HirKind::Alternation(subs) => self.build_alternation(subs),
-            HirKind::Concat(subs) => self.build_concat(subs),
-            HirKind::Repetition(rep) => self.build_repetition(rep),
-            HirKind::Empty => self.build_empty(),
+    fn build_from_ast(&mut self, ast: &Ast) -> Result<(usize, usize)> {
+        match ast {
+            Ast::Literal(lit) => {
+                let b = lit.c as u32;
+                if b > 255 {
+                    return Err(Error::UnsupportedFeature("non ASCII literal"));
+                }
+                self.build_literal(&[b as u8])
+            }
 
-            //library artifacts:
-            HirKind::Class(class) => self.build_class(class),
-            HirKind::Capture(cap) => self.build_from_hir(&cap.sub),
+            Ast::Alternation(alt) => self.build_alternation(&alt.asts),
 
-            _ => Err(Error::UnsupportedFeature("unsupported HIR node")),
+            Ast::Concat(concat) => self.build_concat(&concat.asts),
+
+            Ast::Repetition(rep) => self.build_repetition(rep),
+
+            Ast::Group(group) => {self.build_from_ast(&group.ast)},
+
+            Ast::Empty(_) => self.build_empty(),
+
+            _ => Err(Error::UnsupportedFeature("unsupported AST node")),
         }
     }
     fn add_state(&mut self) -> usize {
@@ -68,12 +72,12 @@ impl EpsilonNfa {
     fn add_transition(&mut self, from: usize, symbol: Symbol, to: usize) {
         self.states[from].transitions.push((symbol, to));
     }
-    fn build_alternation(&mut self, subs: &[Hir]) -> Result<(usize, usize)> {
+    fn build_alternation(&mut self, subs: &[Ast]) -> Result<(usize, usize)> {
         let start = self.add_state();
         let accept = self.add_state();
 
         for sub in subs {
-            let (sub_start, sub_accept) = self.build_from_hir(sub)?;
+            let (sub_start, sub_accept) = self.build_from_ast(sub)?;
 
             // start -> branch
             self.add_transition(start, Symbol::Epsilon, sub_start);
@@ -84,15 +88,15 @@ impl EpsilonNfa {
 
         Ok((start, accept))
     }
-    fn build_concat(&mut self, subs: &[Hir]) -> Result<(usize, usize)> {
+    fn build_concat(&mut self, subs: &[Ast]) -> Result<(usize, usize)> {
         assert!(!subs.is_empty());
 
         // build first
-        let (mut start, mut accept) = self.build_from_hir(&subs[0])?;
+        let (start, mut accept) = self.build_from_ast(&subs[0])?;
 
         // chain the rest
         for sub in &subs[1..] {
-            let (next_start, next_accept) = self.build_from_hir(sub)?;
+            let (next_start, next_accept) = self.build_from_ast(sub)?;
 
             // connect previous accept to next start
             self.add_transition(accept, Symbol::Epsilon, next_start);
@@ -102,84 +106,43 @@ impl EpsilonNfa {
 
         Ok((start, accept))
     }
-    fn build_repetition(&mut self, rep: &regex_syntax::hir::Repetition) -> Result<(usize, usize)> {
-        match (rep.min, rep.max) {
-            // *
-            (0, None) => {
-                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub)?;
+    fn build_repetition(
+        &mut self,
+        rep: &regex_syntax::ast::Repetition,
+    ) -> Result<(usize, usize)> {
+        match rep.op.kind {
+            regex_syntax::ast::RepetitionKind::ZeroOrMore => {
+                let (sub_start, sub_accept) = self.build_from_ast(&rep.ast)?;
 
                 let start = self.add_state();
                 let accept = self.add_state();
 
-                // ε -> sub
                 self.add_transition(start, Symbol::Epsilon, sub_start);
-                // ε -> accept
                 self.add_transition(start, Symbol::Epsilon, accept);
 
-                // loop
                 self.add_transition(sub_accept, Symbol::Epsilon, sub_start);
-                // exit
                 self.add_transition(sub_accept, Symbol::Epsilon, accept);
 
                 Ok((start, accept))
             }
 
-            // +
-            (1, None) => {
-                let (sub_start, sub_accept) = self.build_from_hir(&rep.sub)?;
+            regex_syntax::ast::RepetitionKind::OneOrMore => {
+                let (sub_start, sub_accept) = self.build_from_ast(&rep.ast)?;
 
                 let start = self.add_state();
                 let accept = self.add_state();
 
-                // must go through sub once
                 self.add_transition(start, Symbol::Epsilon, sub_start);
-
-                // loop
                 self.add_transition(sub_accept, Symbol::Epsilon, sub_start);
-                // exit
                 self.add_transition(sub_accept, Symbol::Epsilon, accept);
 
                 Ok((start, accept))
             }
 
-            _ => Err(Error::UnsupportedFeature("only * and + supported for repetition")),
+            _ => Err(Error::UnsupportedFeature("only * and + supported")),
         }
     }
-    fn build_class(&mut self, class: &Class) -> Result<(usize, usize)> {
-        let start = self.add_state();
-        let accept = self.add_state();
-
-        match class {
-            Class::Bytes(bytes) => {
-                for range in bytes.iter() {
-                    for b in range.start()..=range.end() {
-                        let (s, a) = self.build_literal(&[b as u8])?;
-                        self.add_transition(start, Symbol::Epsilon, s); //not sure if this branch is ever reached.
-                        self.add_transition(a, Symbol::Epsilon, accept);
-                    }
-                }
-            }
-            Class::Unicode(unicode) => {
-                for range in unicode.iter() {
-                    let start_u = range.start() as u32;
-                    let end_u = range.end() as u32;
-
-                    // Only allow ASCII / byte-range characters
-                    if end_u > 255 {
-                        Err(Error::UnsupportedFeature("non-ASCII character class not supported"))?;
-                    }
-
-                    for b in start_u..=end_u {
-                        let (s, a) = self.build_literal(&[b as u8])?;
-                        self.add_transition(start, Symbol::Epsilon, s);
-                        self.add_transition(a, Symbol::Epsilon, accept);
-                    }
-                }
-            }
-        }
-
-        Ok((start, accept))
-    }
+    
 
     fn build_empty(&mut self) -> Result<(usize, usize)> {
         let start = self.add_state();
@@ -293,10 +256,14 @@ impl fmt::Display for EpsilonNfa {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::EpsilonNfa;
+
 
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn alternation_not_simplified() {
+        let nfa = EpsilonNfa::from_regex("a|a").unwrap();
+
+        // Thompson alternation requires extra states
+        assert!(nfa.states.len() > 4);
     }
 }
