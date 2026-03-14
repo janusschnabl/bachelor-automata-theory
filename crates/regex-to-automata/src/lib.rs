@@ -1,8 +1,10 @@
 pub mod errors;
 pub use crate::errors::{Error, Result};
-
 use regex_syntax::ast::{parse::Parser, Ast};
 use std::fmt;
+use petgraph::graph::Graph;
+use petgraph::algo::is_isomorphic_matching;
+
 
 #[derive(Debug, Clone, Default)]
 pub struct EpsilonNfa {
@@ -68,25 +70,40 @@ impl EpsilonNfa {
         });
         id
     }
-
     fn add_transition(&mut self, from: usize, symbol: Symbol, to: usize) {
         self.states[from].transitions.push((symbol, to));
     }
+
     fn build_alternation(&mut self, subs: &[Ast]) -> Result<(usize, usize)> {
+        let mut iter = subs.iter();
+
+        let mut current = self.build_from_ast(iter.next().unwrap())?;
+
+        for sub in iter {
+            let right = self.build_from_ast(sub)?;
+            current = self.build_binary_alternation(current, right);
+        }
+
+        Ok(current)
+    }
+    fn build_binary_alternation(
+        &mut self,
+        left: (usize, usize),
+        right: (usize, usize),
+    ) -> (usize, usize) {
         let start = self.add_state();
         let accept = self.add_state();
 
-        for sub in subs {
-            let (sub_start, sub_accept) = self.build_from_ast(sub)?;
+        let (l_start, l_accept) = left;
+        let (r_start, r_accept) = right;
 
-            // start -> branch
-            self.add_transition(start, Symbol::Epsilon, sub_start);
+        self.add_transition(start, Symbol::Epsilon, l_start);
+        self.add_transition(start, Symbol::Epsilon, r_start);
 
-            // branch -> accept
-            self.add_transition(sub_accept, Symbol::Epsilon, accept);
-        }
+        self.add_transition(l_accept, Symbol::Epsilon, accept);
+        self.add_transition(r_accept, Symbol::Epsilon, accept);
 
-        Ok((start, accept))
+        (start, accept)
     }
     fn build_concat(&mut self, subs: &[Ast]) -> Result<(usize, usize)> {
         assert!(!subs.is_empty());
@@ -251,3 +268,62 @@ impl fmt::Display for EpsilonNfa {
     }
 }
 
+
+impl EpsilonNfa {
+    pub fn is_isomorphic_to(&self, other: &Self) -> bool {
+        if self.states.len() != other.states.len() {
+            return false;
+        }
+
+        isomorphic(self, other)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+struct NodeAttr {
+    start: bool,
+    accept: bool,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum EdgeAttr {
+    Epsilon,
+    Byte(u8),
+}
+
+fn to_graph(nfa: &EpsilonNfa) -> Graph<NodeAttr, EdgeAttr> {
+    let mut g = Graph::new();
+    let mut nodes = Vec::new();
+
+    for i in 0..nfa.states.len() {
+        nodes.push(g.add_node(NodeAttr {
+            start: i == nfa.start,
+            accept: i == nfa.accept,
+        }));
+    }
+
+    for (i, state) in nfa.states.iter().enumerate() {
+        for (sym, target) in &state.transitions {
+            let label = match sym {
+                Symbol::Epsilon => EdgeAttr::Epsilon,
+                Symbol::Byte(b) => EdgeAttr::Byte(*b),
+            };
+
+            g.add_edge(nodes[i], nodes[*target], label);
+        }
+    }
+
+    g
+}
+
+pub fn isomorphic(a: &EpsilonNfa, b: &EpsilonNfa) -> bool {
+    let ga = to_graph(a);
+    let gb = to_graph(b);
+
+    is_isomorphic_matching(
+        &ga,
+        &gb,
+        |na, nb| na == nb,
+        |ea, eb| ea == eb,
+    )
+}

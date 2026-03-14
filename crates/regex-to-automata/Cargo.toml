@@ -7,4 +7,6 @@ authors.workspace = true
 license.workspace = true
 
 [dependencies]
+petgraph.workspace = true
+rand.workspace = true
 regex-syntax = "0.8.10"
