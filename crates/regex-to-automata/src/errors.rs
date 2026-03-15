@@ -5,6 +5,7 @@ pub enum Error {
     Parse(String),
     UnsupportedFeature(&'static str),
     InvalidAutomaton(&'static str),
+    InvalidInput(String),
     Message(String),
 }
 
@@ -16,6 +17,7 @@ impl fmt::Display for Error {
             Error::Parse(e) => write!(f, "regex parse error: {}", e),
             Error::UnsupportedFeature(s) => write!(f, "unsupported feature: {}", s),
             Error::InvalidAutomaton(s) => write!(f, "invalid automaton: {}", s),
+            Error::InvalidInput(s) => write!(f, "invalid input: {}", s),
             Error::Message(s) => write!(f, "{}", s),
         }
     }

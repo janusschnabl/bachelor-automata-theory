@@ -32,7 +32,23 @@ impl Env for RegexToDfaEnv {
     }
 
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
-        Ok(ValidationResult::Correct)
+        //TODO: should we use other error types? ie not just InvalidInputForProgram.
+        let expected = EpsilonNfa::from_regex(&_input.regex)
+            .map_err(|e| EnvError::InvalidInputForProgram {
+                message: e.to_string(),
+                source: None,
+            })?;
+        let produced = EpsilonNfa::from_dot(_output.dot.as_str())
+            .map_err(|e| EnvError::InvalidInputForProgram {
+                message: e.to_string(),
+                source: None,
+            })?;
+
+        let is_isomorphic = produced.is_isomorphic_to(&expected);
+        if is_isomorphic 
+            {Ok(ValidationResult::Correct)} 
+        else 
+            {Ok(ValidationResult::Mismatch { reason:  "produced automaton is not isomorphic to expected".into() })}
     }
 }
 
@@ -40,6 +56,7 @@ impl Generate for Input {
     type Context = ();
 
     fn gn<R: rand::Rng>(_cx: &mut Self::Context, rng: &mut R) -> Self {
+        //TODO: Some of this is basically also in the property tests, maybe we can move this to the library and import it here?
         fn gen_regex<R: rand::Rng>(rng: &mut R, depth: usize) -> String {
             const LITS: &[char] = &['a', 'b', 'c'];
 
