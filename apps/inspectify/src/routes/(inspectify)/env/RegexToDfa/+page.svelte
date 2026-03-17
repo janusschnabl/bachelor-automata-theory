@@ -4,7 +4,7 @@
   import Network from '$lib/components/NetworkAutomata.svelte';
   import { Io } from '$lib/io.svelte';
 
-  const io = new Io('RegexToDfa', { regex: 'skip' });
+  const io = new Io('RegexToDfa', { regex: '' });
 </script>
 
 <Env {io}>
@@ -14,9 +14,9 @@
   {#snippet outputView({ output, referenceOutput })}
   {console.log(output.dot)}
   <div class="relative">
-      <div class="absolute inset-0 grid overflow-auto">
-        <Network dot={output.dot || ''} />
-      </div>
+    <div class="absolute inset-0 grid overflow-auto">
+      <Network dot={output.dot || ''} />
     </div>
+  </div>
     {/snippet}
 </Env>
