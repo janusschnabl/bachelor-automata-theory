@@ -15,6 +15,7 @@ members = [
     "crates/mcltl-rs",
     "crates/stdx",
     "crates/regex-to-automata",
+    "crates/xtask",
 ]
 
 [workspace.package]
@@ -38,6 +39,8 @@ ce-core = { path = "./crates/ce-core" }
 ce-interpreter = { path = "./crates/envs/ce-interpreter" }
 ce-parser = { path = "./crates/envs/ce-parser" }
 ce-regex-to-dfa = { path = "./crates/envs/ce-regex-to-dfa" }
+ce-regex-to-enfa = { path = "./crates/envs/ce-regex-to-enfa" }
+ce-regex-to-nfa = { path = "./crates/envs/ce-regex-to-nfa" }
 ce-security = { path = "./crates/envs/ce-security" }
 ce-shell = { path = "./crates/ce-shell" }
 ce-sign = { path = "./crates/envs/ce-sign" }
