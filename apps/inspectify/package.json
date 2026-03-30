@@ -43,9 +43,11 @@
   },
   "type": "module",
   "dependencies": {
+    "@hpcc-js/wasm-graphviz": "^1.21.2",
     "@iconify-json/heroicons": "^1.1.19",
     "ayu": "^8.0.1",
     "file-saver": "^2.0.5",
+    "graphviz-wasm": "^3.0.2",
     "immer": "^10.0.3",
     "monaco-editor": "^0.45.0",
     "unplugin-icons": "22.0.0",
