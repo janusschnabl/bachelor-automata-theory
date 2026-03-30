@@ -1,6 +1,6 @@
 use petgraph::algo::is_isomorphic_matching;
 use petgraph::graph::Graph;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 use crate::{EpsilonNfa, State, Symbol};
 
@@ -34,85 +34,85 @@ impl EpsilonNfa {
 
     pub fn to_nfa(&self) -> Nfa {
         // STEP 1: Find the Epsilon Closure
-        // ===== Compute epsilon closure for each state in the epsilon-NFA =====
         let ecloses: Vec<Vec<usize>> = (0..self.states.len()).map(|s| self.eclose(s)).collect();
 
-        // STEP 2: Create New States for the NFA using Subset Construction
-        // ===== Each NFA state represents a set of epsilon-NFA states =====
-        let mut state_map: HashMap<Vec<usize>, usize> = HashMap::new();
+        // STEP 2: Discover reachable states only
+        let mut reachable: Vec<bool> = vec![false; self.states.len()];
+        let mut queue: Vec<usize> = vec![self.start];
+        reachable[self.start] = true;
+
+        let mut i = 0;
+        while i < queue.len() {
+            let s = queue[i];
+            i += 1;
+
+            let eclose_s = &ecloses[s];
+            for &e in eclose_s {
+                for (sym, target) in &self.states[e].transitions {
+                    if let Symbol::Byte(_b) = sym {
+                        if !reachable[*target] {
+                            reachable[*target] = true;
+                            queue.push(*target);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut state_mapping: HashMap<usize, usize> = HashMap::new();
         let mut nfa_states: Vec<State> = Vec::new();
         let mut accept_states: Vec<usize> = Vec::new();
-        let mut queue: VecDeque<Vec<usize>> = VecDeque::new();
 
-        // Start with epsilon closure of the start state
-        let mut start_set = ecloses[self.start].clone();
-        start_set.sort();
-        start_set.dedup();
+        for (old_idx, &is_reachable) in reachable.iter().enumerate() {
+            if is_reachable {
+                let new_idx = nfa_states.len();
+                state_mapping.insert(old_idx, new_idx);
+                nfa_states.push(State {
+                    transitions: vec![],
+                });
 
-        queue.push_back(start_set.clone());
-        state_map.insert(start_set.clone(), 0);
-        nfa_states.push(State {
-            transitions: vec![],
-        });
-
-        // Check if start state is accepting
-        if start_set.contains(&self.accept) {
-            accept_states.push(0);
+                // STEP 4: Mark accepting states
+                if ecloses[old_idx].contains(&self.accept) {
+                    accept_states.push(new_idx);
+                }
+            }
         }
 
         // STEP 3: Define the Transitions
-        // ===== Build transitions by exploring reachable state sets =====
-        // ===== FIX: Collect ALL reachable targets for each symbol, not just one =====
-        while let Some(current_set) = queue.pop_front() {
-            let current_idx = state_map[&current_set];
+        for (old_idx, &new_idx) in &state_mapping {
+            let eclose_s = &ecloses[*old_idx];
 
-            // For each symbol, find all reachable epsilon-NFA states
-            let mut symbol_targets: HashMap<u8, HashSet<usize>> = HashMap::new();
+            let mut symbol_targets: HashMap<u8, Vec<usize>> = HashMap::new();
 
-            for &state in &current_set {
-                for (sym, target) in &self.states[state].transitions {
+            for &e in eclose_s {
+                for (sym, target) in &self.states[e].transitions {
                     if let Symbol::Byte(b) = sym {
-                        // Add all states in the epsilon closure of this target
-                        symbol_targets.entry(*b).or_insert_with(HashSet::new);
-                        for &s in &ecloses[*target] {
-                            symbol_targets.get_mut(b).unwrap().insert(s);
+                        let targets = symbol_targets.entry(*b).or_insert_with(Vec::new);
+                        for &t in &ecloses[*target] {
+                            if !targets.contains(&t) {
+                                targets.push(t);
+                            }
                         }
                     }
                 }
             }
 
-            // Create transitions for each symbol
-            for (b, target_set) in symbol_targets {
-                let mut target_vec: Vec<usize> = target_set.into_iter().collect();
-                target_vec.sort();
-                target_vec.dedup();
-
-                // Check if this target set already exists
-                if !state_map.contains_key(&target_vec) {
-                    let new_idx = nfa_states.len();
-                    state_map.insert(target_vec.clone(), new_idx);
-                    nfa_states.push(State {
-                        transitions: vec![],
-                    });
-                    queue.push_back(target_vec.clone());
-
-                    // STEP 4: Set Accepting States
-                    // ===== Mark as accepting if set contains the accept state =====
-                    if target_vec.contains(&self.accept) {
-                        accept_states.push(new_idx);
+            for (b, targets) in symbol_targets {
+                for target in targets {
+                    if let Some(&new_target) = state_mapping.get(&target) {
+                        nfa_states[new_idx]
+                            .transitions
+                            .push((Symbol::Byte(b), new_target));
                     }
                 }
-
-                let target_idx = state_map[&target_vec];
-                nfa_states[current_idx]
-                    .transitions
-                    .push((Symbol::Byte(b), target_idx));
             }
         }
 
+        let new_start = state_mapping.get(&self.start).copied().unwrap_or(0);
+
         Nfa {
             states: nfa_states,
-            start: 0,
+            start: new_start,
             accept: accept_states,
         }
     }
