@@ -21,7 +21,6 @@ impl Env for RegexToNfaEnv {
 
     type Meta = ();
 
-    //TODO: shall be changed to run for NFA
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
         let enfa =
             EpsilonNfa::from_regex(&input.regex).map_err(|e| EnvError::InvalidInputForProgram {
@@ -33,28 +32,28 @@ impl Env for RegexToNfaEnv {
         Ok(Output { dot: nfa.to_dot() })
     }
 
-    //TODO shall be changed to validate for NFA
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
         //TODO: should we use other error types? ie not just InvalidInputForProgram.
-        let expected = EpsilonNfa::from_regex(&_input.regex).map_err(|e| {
+        let expected_enfa = EpsilonNfa::from_regex(&_input.regex).map_err(|e| {
             EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             }
         })?;
-        let produced = EpsilonNfa::from_dot(_output.dot.as_str()).map_err(|e| {
-            EnvError::InvalidInputForProgram {
+        let expected = expected_enfa.to_nfa();
+
+        let produced =
+            Nfa::from_dot(_output.dot.as_str()).map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
-            }
-        })?;
+            })?;
 
         let is_isomorphic = produced.is_isomorphic_to(&expected);
         if is_isomorphic {
             Ok(ValidationResult::Correct)
         } else {
             Ok(ValidationResult::Mismatch {
-                reason: "produced automaton is not isomorphic to expected".into(),
+                reason: "produced NFA is not isomorphic to expected".into(),
             })
         }
     }
