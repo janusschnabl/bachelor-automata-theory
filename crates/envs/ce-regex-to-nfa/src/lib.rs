@@ -1,5 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
-use regex_to_automata::EpsilonNfa;
+use regex_to_automata::{EpsilonNfa, Nfa};
 use serde::{Deserialize, Serialize};
 
 define_env!(RegexToNfaEnv);
@@ -23,11 +23,12 @@ impl Env for RegexToNfaEnv {
 
     //TODO: shall be changed to run for NFA
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
-        let nfa =
+        let enfa =
             EpsilonNfa::from_regex(&input.regex).map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             })?;
+        let nfa = enfa.to_nfa();
 
         Ok(Output { dot: nfa.to_dot() })
     }

@@ -1,10 +1,12 @@
-pub mod errors;
 pub mod dot;
+pub mod errors;
 pub use crate::errors::{Error, Result};
-use regex_syntax::ast::{parse::Parser, Ast};
-use std::fmt;
-use petgraph::graph::Graph;
+use regex_syntax::ast::{Ast, parse::Parser};
+pub mod nfa;
+pub use crate::nfa::Nfa;
 use petgraph::algo::is_isomorphic_matching;
+use petgraph::graph::Graph;
+use std::fmt;
 
 //TODO: i want to move the thompson construction logic to a seperate file and keep only the core logic here.
 #[derive(Debug, Clone, Default)]
@@ -23,7 +25,6 @@ pub enum Symbol {
     Epsilon,
     Byte(u8),
 }
-
 
 impl EpsilonNfa {
     pub fn from_regex(regex: &str) -> Result<Self> {
@@ -57,7 +58,7 @@ impl EpsilonNfa {
 
             Ast::Repetition(rep) => self.build_repetition(rep),
 
-            Ast::Group(group) => {self.build_from_ast(&group.ast)},
+            Ast::Group(group) => self.build_from_ast(&group.ast),
 
             Ast::Empty(_) => self.build_empty(),
 
@@ -124,10 +125,7 @@ impl EpsilonNfa {
 
         Ok((start, accept))
     }
-    fn build_repetition(
-        &mut self,
-        rep: &regex_syntax::ast::Repetition,
-    ) -> Result<(usize, usize)> {
+    fn build_repetition(&mut self, rep: &regex_syntax::ast::Repetition) -> Result<(usize, usize)> {
         match rep.op.kind {
             regex_syntax::ast::RepetitionKind::ZeroOrMore => {
                 let (sub_start, sub_accept) = self.build_from_ast(&rep.ast)?;
@@ -160,7 +158,6 @@ impl EpsilonNfa {
             _ => Err(Error::UnsupportedFeature("only * and + supported")),
         }
     }
-    
 
     fn build_empty(&mut self) -> Result<(usize, usize)> {
         let start = self.add_state();
@@ -193,8 +190,6 @@ impl EpsilonNfa {
     }
 }
 
-
-
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -209,7 +204,6 @@ impl fmt::Display for Symbol {
         }
     }
 }
-
 
 impl fmt::Display for EpsilonNfa {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -230,7 +224,6 @@ impl fmt::Display for EpsilonNfa {
         Ok(())
     }
 }
-
 
 impl EpsilonNfa {
     pub fn is_isomorphic_to(&self, other: &Self) -> bool {
@@ -283,10 +276,5 @@ pub fn isomorphic(a: &EpsilonNfa, b: &EpsilonNfa) -> bool {
     let ga = to_graph(a);
     let gb = to_graph(b);
 
-    is_isomorphic_matching(
-        &ga,
-        &gb,
-        |na, nb| na == nb,
-        |ea, eb| ea == eb,
-    )
+    is_isomorphic_matching(&ga, &gb, |na, nb| na == nb, |ea, eb| ea == eb)
 }
