@@ -68,6 +68,49 @@ impl EpsilonNfa {
         symbols
     }
 
+    //TODO: JAnus har også implementeret det her et andet sted, så det skal lige forenes.
+    pub fn epsilon_closure(&self, state: usize) -> HashSet<usize> {
+        let mut closure = HashSet::new();
+        let mut stack = vec![state];
+
+        while let Some(current) = stack.pop() {
+            if closure.insert(current) {
+                for (symbol, next) in &self.states[current].transitions {
+                    if matches!(symbol, Symbol::Epsilon) {
+                        stack.push(*next);
+                    }
+                }
+            }
+        }
+
+        closure
+    }
+
+    pub fn accepts(&self, word: &str) -> bool {
+        let bytes = word.as_bytes();
+        let mut current_states = self.epsilon_closure(self.start);
+
+        for &byte in bytes {
+            let mut next_states = HashSet::new();
+            for state in &current_states {
+                for (symbol, next) in &self.states[*state].transitions {
+                    if let Symbol::Byte(b) = symbol {
+                        if *b == byte {
+                            next_states.extend(self.epsilon_closure(*next));
+                        }
+                    }
+                }
+            }
+            current_states = next_states;
+
+            if current_states.is_empty() {
+                return false;
+            }
+        }
+
+        current_states.contains(&self.accept)
+    }
+
     fn build_from_ast(&mut self, ast: &Ast) -> Result<(usize, usize)> {
         match ast {
             Ast::Literal(lit) => {

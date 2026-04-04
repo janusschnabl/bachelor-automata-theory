@@ -378,3 +378,166 @@ fn fuzz_non_isomorphic_graphs() {
         );
     }
 }
+
+#[test]
+fn epsilon_closure_contains_itself() {
+    // Arrange
+    let nfa = nfa! {
+        start: 0,
+        accept: 1,
+        states: [
+            0 => [(b(b'a'), 1)],
+            1 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 1);
+    assert!(closure.contains(&0));
+}
+
+#[test]
+fn epsilon_closure_follows_chain_of_epsilon_transitions() {
+    // Arrange
+    let nfa = nfa! {
+        start: 0,
+        accept: 3,
+        states: [
+            0 => [(E, 1)],
+            1 => [(E, 2)],
+            2 => [(b(b'a'), 3)],
+            3 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 3);
+    assert!(closure.contains(&0));
+    assert!(closure.contains(&1));
+    assert!(closure.contains(&2));
+}
+
+#[test]
+fn epsilon_closure_explores_all_reachable_branches() {
+    // Arrange
+    let nfa = nfa! {
+        start: 0,
+        accept: 4,
+        states: [
+            0 => [(E, 1), (E, 2)],
+            1 => [(b(b'a'), 3)],
+            2 => [(b(b'b'), 4)],
+            3 => [],
+            4 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 3);
+    assert!(closure.contains(&0));
+    assert!(closure.contains(&1));
+    assert!(closure.contains(&2));
+}
+
+#[test]
+fn empty_regex_accepts_empty_string() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts(""));
+    assert!(!nfa.accepts("a"));
+}
+
+#[test]
+fn single_character_regex_accepts_exact_match() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("a"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("aa"));
+}
+
+#[test]
+fn concatenation_accepts_exact_sequence() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("ab", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("ab"));
+    assert!(!nfa.accepts("a"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ba"));
+    assert!(!nfa.accepts(""));
+}
+
+#[test]
+fn alternation_accepts_any_option() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a|b", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("c"));
+}
+
+#[test]
+fn kleene_star_accepts_zero_or_more_occurrences() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a*", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts(""));
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("aa"));
+    assert!(nfa.accepts("aaa"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts("aab"));
+}
+
+#[test]
+fn plus_accepts_one_or_more_occurrences() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a+", None).unwrap();
+
+    // Act & Assert
+    assert!(!nfa.accepts(""));
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("aa"));
+    assert!(nfa.accepts("aaa"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+}
+
+#[test]
+fn complex_pattern_accepts_valid_strings_and_rejects_invalid() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("(a|b)*abb", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("abb"));
+    assert!(nfa.accepts("aabb"));
+    assert!(nfa.accepts("babb"));
+    assert!(nfa.accepts("aababb"));
+    assert!(nfa.accepts("bababb"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts("aba"));
+    assert!(!nfa.accepts("abba"));
+}
