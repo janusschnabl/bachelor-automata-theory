@@ -1,4 +1,4 @@
-use regex_to_automata::{EpsilonNfa, Symbol, State};
+use regex_to_automata::{EpsilonNfa, Symbol, State, Automaton};
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::StdRng};
 
@@ -540,4 +540,145 @@ fn complex_pattern_accepts_valid_strings_and_rejects_invalid() {
     assert!(!nfa.accepts("ab"));
     assert!(!nfa.accepts("aba"));
     assert!(!nfa.accepts("abba"));
+}
+
+#[test]
+fn encode_label_epsilon_to_string() {
+    // Arrange
+    let epsilon = Symbol::Epsilon;
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&epsilon);
+
+    // Assert
+    assert_eq!(encoded, "ε");
+}
+
+#[test]
+fn encode_label_byte_ascii_graphic() {
+    // Arrange
+    let byte_a = Symbol::Byte(b'A');
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&byte_a);
+
+    // Assert
+    assert_eq!(encoded, "A");
+}
+
+#[test]
+fn encode_label_byte_non_graphic_hex() {
+    // Arrange
+    let byte_null = Symbol::Byte(0x00);
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&byte_null);
+
+    // Assert
+    assert_eq!(encoded, "0x00");
+}
+
+#[test]
+fn decode_label_epsilon_from_string() {
+    // Arrange
+    let label_str = "ε";
+
+    // Act
+    let decoded = EpsilonNfa::decode_label(label_str).unwrap();
+
+    // Assert
+    assert_eq!(decoded, Symbol::Epsilon);
+}
+
+#[test]
+fn decode_label_byte_ascii_graphic() {
+    // Arrange
+    let label_str = "A";
+
+    // Act
+    let decoded = EpsilonNfa::decode_label(label_str).unwrap();
+
+    // Assert
+    assert_eq!(decoded, Symbol::Byte(b'A'));
+}
+
+#[test]
+fn encode_decode_roundtrip_epsilon() {
+    // Arrange
+    let original = Symbol::Epsilon;
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&original);
+    let decoded = EpsilonNfa::decode_label(&encoded).unwrap();
+
+    // Assert
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn encode_decode_roundtrip_byte() {
+    // Arrange
+    let original = Symbol::Byte(b'X');
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&original);
+    let decoded = EpsilonNfa::decode_label(&encoded).unwrap();
+
+    // Assert
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn decode_label_rejects_invalid_input() {
+    // Arrange
+    let invalid_label = "xyz";
+
+    // Act & Assert
+    assert!(EpsilonNfa::decode_label(invalid_label).is_err());
+}
+
+#[test]
+fn round_trip_to_dot_from_dot_produces_isomorphic_automaton() {
+    // Arrange
+    let original = EpsilonNfa::from_regex("(a|b)*abb", None).unwrap();
+
+    // Act
+    let dot = original.to_dot();
+    let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
+
+    // Assert
+    assert!(original.is_isomorphic_to(&reconstructed));
+}
+
+#[test]
+fn round_trip_empty_string() {
+    // Arrange
+    let original = EpsilonNfa::from_regex("", None).unwrap();
+
+    // Act
+    let dot = original.to_dot();
+    let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
+
+    // Assert
+    assert!(original.is_isomorphic_to(&reconstructed));
+}
+
+#[test]
+fn round_trip_complex_pattern() {
+    // Arrange
+    let patterns = vec!["a", "ab", "a|b", "(a|b)*", "(ab)*c", "(a|b)*abb"];
+
+    for pattern in patterns {
+        let original = EpsilonNfa::from_regex(pattern, None).unwrap();
+
+        // Act
+        let dot = original.to_dot();
+        let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
+
+        // Assert
+        assert!(
+            original.is_isomorphic_to(&reconstructed),
+            "round-trip failed for pattern: {pattern}"
+        );
+    }
 }

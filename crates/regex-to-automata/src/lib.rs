@@ -1,11 +1,12 @@
 pub mod errors;
 pub mod dot;
+pub mod automaton;
 pub use crate::errors::{Error, Result};
+pub use crate::automaton::Automaton;
+use crate::automaton::automaton_isomorphic;
 use regex_syntax::ast::{parse::Parser, Ast};
 use std::collections::HashSet;
 use std::fmt;
-use petgraph::graph::Graph;
-use petgraph::algo::is_isomorphic_matching;
 
 //TODO: i want to move the thompson construction logic to a seperate file and keep only the core logic here.
 #[derive(Debug, Clone, Default)]
@@ -84,31 +85,6 @@ impl EpsilonNfa {
         }
 
         closure
-    }
-
-    pub fn accepts(&self, word: &str) -> bool {
-        let bytes = word.as_bytes();
-        let mut current_states = self.epsilon_closure(self.start);
-
-        for &byte in bytes {
-            let mut next_states = HashSet::new();
-            for state in &current_states {
-                for (symbol, next) in &self.states[*state].transitions {
-                    if let Symbol::Byte(b) = symbol {
-                        if *b == byte {
-                            next_states.extend(self.epsilon_closure(*next));
-                        }
-                    }
-                }
-            }
-            current_states = next_states;
-
-            if current_states.is_empty() {
-                return false;
-            }
-        }
-
-        current_states.contains(&self.accept)
     }
 
     fn build_from_ast(&mut self, ast: &Ast) -> Result<(usize, usize)> {
@@ -302,61 +278,73 @@ impl fmt::Display for EpsilonNfa {
 }
 
 
-impl EpsilonNfa {
-    pub fn is_isomorphic_to(&self, other: &Self) -> bool {
-        if self.states.len() != other.states.len() {
-            return false;
-        }
+impl Automaton for EpsilonNfa {
+    type Label = Symbol;
 
-        isomorphic(self, other)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-struct NodeAttr {
-    start: bool,
-    accept: bool,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum EdgeAttr {
-    Epsilon,
-    Byte(u8),
-}
-
-fn to_graph(nfa: &EpsilonNfa) -> Graph<NodeAttr, EdgeAttr> {
-    let mut g = Graph::new();
-    let mut nodes = Vec::new();
-
-    for i in 0..nfa.states.len() {
-        nodes.push(g.add_node(NodeAttr {
-            start: i == nfa.start,
-            accept: i == nfa.accept,
-        }));
+    fn state_count(&self) -> usize {
+        self.states.len()
     }
 
-    for (i, state) in nfa.states.iter().enumerate() {
-        for (sym, target) in &state.transitions {
-            let label = match sym {
-                Symbol::Epsilon => EdgeAttr::Epsilon,
-                Symbol::Byte(b) => EdgeAttr::Byte(*b),
-            };
+    fn start_state(&self) -> usize {
+        self.start
+    }
 
-            g.add_edge(nodes[i], nodes[*target], label);
+    fn accept_states(&self) -> HashSet<usize> {
+        let mut set = HashSet::new();
+        set.insert(self.accept);
+        set
+    }
+
+    fn transitions_from(&self, state: usize) -> Vec<(Self::Label, usize)> {
+        self.states[state].transitions.clone()
+    }
+
+    fn alphabet(&self) -> &HashSet<u8> {
+        &self.alphabet
+    }
+
+    fn encode_label(label: &Symbol) -> String {
+        match label {
+            Symbol::Epsilon => "ε".to_string(),
+            Symbol::Byte(b) => {
+                if b.is_ascii_graphic() {
+                    format!("{}", *b as char)
+                } else {
+                    format!("0x{:02X}", b)
+                }
+            }
         }
     }
 
-    g
+    fn decode_label(label: &str) -> Result<Symbol> {
+        if label == "ε" {
+            Ok(Symbol::Epsilon)
+        } else if label.len() == 1 {
+            Ok(Symbol::Byte(label.as_bytes()[0]))
+        } else {
+            Err(Error::InvalidInput(format!("invalid label: {label}")))
+        }
+    }
+
+    fn next_states(&self, state: usize, byte: u8) -> HashSet<usize> {
+        // From this state and all epsilon-reachable states, find byte transitions and epsilon-close results
+        let mut next = HashSet::new();
+        let closure = self.epsilon_closure(state);  // Epsilon-close the source first
+        for s in closure {
+            for (symbol, target) in &self.states[s].transitions {
+                if let Symbol::Byte(b) = symbol {
+                    if *b == byte {
+                        next.extend(self.epsilon_closure(*target));  // Epsilon-close the target
+                    }
+                }
+            }
+        }
+        next
+    }
+
+    fn accepts(&self, word: &str) -> bool {
+        let initial_states = self.epsilon_closure(self.start);
+        self.accepts_from_states(&initial_states, word)
+    }
 }
 
-pub fn isomorphic(a: &EpsilonNfa, b: &EpsilonNfa) -> bool {
-    let ga = to_graph(a);
-    let gb = to_graph(b);
-
-    is_isomorphic_matching(
-        &ga,
-        &gb,
-        |na, nb| na == nb,
-        |ea, eb| ea == eb,
-    )
-}

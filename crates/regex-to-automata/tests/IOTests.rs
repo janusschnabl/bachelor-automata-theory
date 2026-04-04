@@ -1,4 +1,4 @@
-use regex_to_automata::EpsilonNfa;
+use regex_to_automata::{EpsilonNfa, Automaton};
 use proptest::prelude::*;
 
 //TODO: ok this file name is pretty shit. Should probably be more descriptive and include a few tests of specific structs and their dot formats

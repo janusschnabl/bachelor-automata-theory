@@ -1,5 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
-use regex_to_automata::EpsilonNfa;
+use regex_to_automata::{EpsilonNfa, Automaton};
 use serde::{Deserialize, Serialize};
 
 define_env!(RegexToEnfaEnv);

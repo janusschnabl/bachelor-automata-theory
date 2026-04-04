@@ -1,46 +1,10 @@
-use crate::{EpsilonNfa, Symbol, State};
+use crate::{EpsilonNfa, State};
 use crate::errors::{Error, Result};
+use crate::automaton::Automaton;
 
 use graphviz_rust::dot_structures::{EdgeTy, Graph, Id, Stmt, Vertex};
 
-//This entire file is literally just made by chat, but i don't care too much for writing simple formatting stuff by hand and it seems to work.
 impl EpsilonNfa {
-    pub fn to_dot(&self) -> String {
-        let mut s = String::new();
-
-        s.push_str("digraph NFA {\n");
-        s.push_str("  rankdir=LR;\n");
-
-        for (i, _) in self.states.iter().enumerate() {
-            let mut attrs = Vec::new();
-
-            if i == self.start {
-                attrs.push("isInitial=true");
-            }
-            if i == self.accept {
-                attrs.push("isAccepting=true");
-            }
-
-            if attrs.is_empty() {
-                s.push_str(&format!("  {};\n", i));
-            } else {
-                s.push_str(&format!("  {} [{}];\n", i, attrs.join(", ")));
-            }
-        }
-
-        s.push('\n');
-
-        for (from, state) in self.states.iter().enumerate() {
-            for (symbol, to) in &state.transitions {
-                s.push_str(&format!("  {} -> {} [label=\"{}\"];\n", from, to, symbol));
-            }
-        }
-
-        s.push_str("}\n");
-
-        s
-    }
-
     pub fn from_dot(dot: &str) -> Result<Self> {
         let parsed = graphviz_rust::parse(dot)
             .map_err(|e| Error::InvalidInput(format!("dot parse error: {e}")))?;
@@ -101,13 +65,7 @@ impl EpsilonNfa {
                                 None
                             }).ok_or_else(|| Error::InvalidInput("edge missing label".into()))?;
 
-                            let symbol = if label == "ε" {
-                                Symbol::Epsilon
-                            } else if label.len() == 1 {
-                                Symbol::Byte(label.as_bytes()[0])
-                            } else {
-                                return Err(Error::InvalidInput(format!("invalid label: {label}")));
-                            };
+                            let symbol = EpsilonNfa::decode_label(&label)?;
 
                             nfa.add_transition(from, symbol, to);
                         }
