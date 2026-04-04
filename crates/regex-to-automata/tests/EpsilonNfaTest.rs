@@ -28,13 +28,14 @@ macro_rules! nfa {
             states,
             start: $start,
             accept: $accept,
+            alphabet: Default::default(),
         }
     }};
 }
 
 #[test]
 fn empty_string_structure() {
-    let produced = EpsilonNfa::from_regex("").unwrap();
+    let produced = EpsilonNfa::from_regex("", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -50,7 +51,7 @@ fn empty_string_structure() {
 
 #[test]
 fn literal_structure() {
-    let produced = EpsilonNfa::from_regex("a").unwrap();
+    let produced = EpsilonNfa::from_regex("a", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -66,7 +67,7 @@ fn literal_structure() {
 
 #[test]
 fn concat_structure() {
-    let produced = EpsilonNfa::from_regex("ab").unwrap();
+    let produced = EpsilonNfa::from_regex("ab", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -84,7 +85,7 @@ fn concat_structure() {
 
 #[test]
 fn alternation_structure() {
-    let produced = EpsilonNfa::from_regex("a|b").unwrap();
+    let produced = EpsilonNfa::from_regex("a|b", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -104,7 +105,7 @@ fn alternation_structure() {
 
 #[test]
 fn kleene_star_structure() {
-    let produced = EpsilonNfa::from_regex("a*").unwrap();
+    let produced = EpsilonNfa::from_regex("a*", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -122,7 +123,7 @@ fn kleene_star_structure() {
 
 #[test]
 fn plus_structure() {
-    let produced = EpsilonNfa::from_regex("a+").unwrap();
+    let produced = EpsilonNfa::from_regex("a+", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -140,7 +141,7 @@ fn plus_structure() {
 
 #[test]
 fn nested_expression_structure() {
-    let produced = EpsilonNfa::from_regex("(a|b)*").unwrap();
+    let produced = EpsilonNfa::from_regex("(a|b)*", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -161,7 +162,7 @@ fn nested_expression_structure() {
 }
 #[test]
 fn star_of_empty_structure() {
-    let produced = EpsilonNfa::from_regex("()*").unwrap();
+    let produced = EpsilonNfa::from_regex("()*", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -179,7 +180,7 @@ fn star_of_empty_structure() {
 
 #[test]
 fn alternation_then_concat_structure() {
-    let produced = EpsilonNfa::from_regex("(a|b)c").unwrap();
+    let produced = EpsilonNfa::from_regex("(a|b)c", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -201,15 +202,15 @@ fn alternation_then_concat_structure() {
 
 #[test]
 fn grouping_does_not_change_structure() {
-    let a = EpsilonNfa::from_regex("ab").unwrap();
-    let b = EpsilonNfa::from_regex("(ab)").unwrap();
+    let a = EpsilonNfa::from_regex("ab", None).unwrap();
+    let b = EpsilonNfa::from_regex("(ab)", None).unwrap();
 
     assert!(a.is_isomorphic_to(&b));
 }
 
 #[test]
 fn chain_of_literals() {
-    let produced = EpsilonNfa::from_regex("abc").unwrap();
+    let produced = EpsilonNfa::from_regex("abc", None).unwrap();
 
     let expected = nfa! {
         start: 0,
@@ -229,9 +230,9 @@ fn chain_of_literals() {
 
 #[test]
 fn alternation_is_left_associative() {
-    let a = EpsilonNfa::from_regex("a|b|c").unwrap();
-    let b = EpsilonNfa::from_regex("(a|b)|c").unwrap();
-    let c = EpsilonNfa::from_regex("a|(b|c)").unwrap();
+    let a = EpsilonNfa::from_regex("a|b|c", None).unwrap();
+    let b = EpsilonNfa::from_regex("(a|b)|c", None).unwrap();
+    let c = EpsilonNfa::from_regex("a|(b|c)", None).unwrap();
 
     assert!(a.is_isomorphic_to(&b));
     assert!(!a.is_isomorphic_to(&c));
@@ -264,8 +265,8 @@ fn precedence_rules_match_explicit_parentheses() {
     ];
 
     for (implicit, explicit) in cases {
-        let a = EpsilonNfa::from_regex(implicit).unwrap();
-        let b = EpsilonNfa::from_regex(explicit).unwrap();
+        let a = EpsilonNfa::from_regex(implicit, None).unwrap();
+        let b = EpsilonNfa::from_regex(explicit, None).unwrap();
 
         assert!(
             a.is_isomorphic_to(&b),
@@ -322,6 +323,7 @@ fn permute_states(nfa: &EpsilonNfa, rng: &mut StdRng) -> EpsilonNfa {
         states: new_states,
         start: perm[nfa.start],
         accept: perm[nfa.accept],
+        alphabet: nfa.alphabet.clone(),
     }
 }
 #[test]
@@ -342,7 +344,7 @@ fn fuzz_isomorphism_with_random_permutations() {
     ];
 
     for r in regexes {
-        let nfa = EpsilonNfa::from_regex(r).unwrap();
+        let nfa = EpsilonNfa::from_regex(r, None).unwrap();
 
         for _ in 0..500 {
             let permuted = permute_states(&nfa, &mut rng);
@@ -363,8 +365,8 @@ fn fuzz_non_isomorphic_graphs() {
 
     let mut rng = StdRng::seed_from_u64(seed);
 
-    let a = EpsilonNfa::from_regex("ab").unwrap();
-    let b = EpsilonNfa::from_regex("a|b").unwrap();
+    let a = EpsilonNfa::from_regex("ab", None).unwrap();
+    let b = EpsilonNfa::from_regex("a|b", None).unwrap();
 
     for _ in 0..100 {
         let pa = permute_states(&a, &mut rng);

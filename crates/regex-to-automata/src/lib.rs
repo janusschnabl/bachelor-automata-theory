@@ -2,6 +2,7 @@ pub mod errors;
 pub mod dot;
 pub use crate::errors::{Error, Result};
 use regex_syntax::ast::{parse::Parser, Ast};
+use std::collections::HashSet;
 use std::fmt;
 use petgraph::graph::Graph;
 use petgraph::algo::is_isomorphic_matching;
@@ -12,6 +13,7 @@ pub struct EpsilonNfa {
     pub states: Vec<State>,
     pub start: usize,
     pub accept: usize,
+    pub alphabet: HashSet<u8>,
 }
 #[derive(Debug, Clone)]
 pub struct State {
@@ -26,7 +28,7 @@ pub enum Symbol {
 
 
 impl EpsilonNfa {
-    pub fn from_regex(regex: &str) -> Result<Self> {
+    pub fn from_regex(regex: &str, alphabet: Option<HashSet<u8>>) -> Result<Self> {
         if !regex.is_ascii() {
             return Err(Error::UnsupportedFeature("only ASCII regex supported"));
         }
@@ -37,8 +39,33 @@ impl EpsilonNfa {
         let (start, accept) = nfa.build_from_ast(&ast)?;
         nfa.start = start;
         nfa.accept = accept;
+        
+        let used_symbols = nfa.extract_used_symbols();
+        nfa.alphabet = match alphabet {
+            Some(custom_alphabet) => {
+                if !used_symbols.is_subset(&custom_alphabet) {
+                    return Err(Error::InvalidInput(
+                        "provided alphabet does not include all symbols in the automata".to_string(),
+                    ));
+                }
+                custom_alphabet
+            }
+            None => used_symbols,
+        };
 
         Ok(nfa)
+    }
+
+    fn extract_used_symbols(&self) -> HashSet<u8> {
+        let mut symbols = HashSet::new();
+        for state in &self.states {
+            for (symbol, _) in &state.transitions {
+                if let Symbol::Byte(b) = symbol {
+                    symbols.insert(*b);
+                }
+            }
+        }
+        symbols
     }
 
     fn build_from_ast(&mut self, ast: &Ast) -> Result<(usize, usize)> {

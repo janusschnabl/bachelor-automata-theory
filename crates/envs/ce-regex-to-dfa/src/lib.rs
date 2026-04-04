@@ -22,7 +22,7 @@ impl Env for RegexToDfaEnv {
     type Meta = ();
 
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
-        let nfa = EpsilonNfa::from_regex(&input.regex)
+        let nfa = EpsilonNfa::from_regex(&input.regex, None)
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
@@ -33,7 +33,7 @@ impl Env for RegexToDfaEnv {
 
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
         //TODO: should we use other error types? ie not just InvalidInputForProgram.
-        let expected = EpsilonNfa::from_regex(&_input.regex)
+        let expected = EpsilonNfa::from_regex(&_input.regex, None)
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,

@@ -24,7 +24,7 @@ impl Env for RegexToNfaEnv {
     //TODO: shall be changed to run for NFA
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
         let nfa =
-            EpsilonNfa::from_regex(&input.regex).map_err(|e| EnvError::InvalidInputForProgram {
+            EpsilonNfa::from_regex(&input.regex, None).map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             })?;
@@ -35,7 +35,7 @@ impl Env for RegexToNfaEnv {
     //TODO shall be changed to validate for NFA
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
         //TODO: should we use other error types? ie not just InvalidInputForProgram.
-        let expected = EpsilonNfa::from_regex(&_input.regex).map_err(|e| {
+        let expected = EpsilonNfa::from_regex(&_input.regex, None).map_err(|e| {
             EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,

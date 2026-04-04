@@ -31,7 +31,7 @@ proptest! {
     #[test]
     fn dot_roundtrip_preserves_structure(regex in regex_strategy()) {
 
-        let nfa = EpsilonNfa::from_regex(&regex).unwrap();
+        let nfa = EpsilonNfa::from_regex(&regex, None).unwrap();
 
         let dot = nfa.to_dot();
         let parsed = EpsilonNfa::from_dot(&dot).unwrap();
