@@ -43,28 +43,7 @@ pub trait Automaton: Sized {
     fn accepts(&self, word: &str) -> bool {
         let mut current_states = HashSet::new();
         current_states.insert(self.start_state());
-        self.accepts_from_states(&current_states, word)
-    }
-
-    /// Internal: simulates from a given set of initial states
-    /// Used to allow customization of initial state set (e.g., with epsilon closure for EpsilonNfa)
-    fn accepts_from_states(&self, initial_states: &HashSet<usize>, word: &str) -> bool {
-        let bytes = word.as_bytes();
-        let mut current_states = initial_states.clone();
-
-        for &byte in bytes {
-            let mut next = HashSet::new();
-            for state in current_states {
-                next.extend(self.next_states(state, byte));
-            }
-            current_states = next;
-
-            if current_states.is_empty() {
-                return false;
-            }
-        }
-
-        current_states.into_iter().any(|state| self.accept_states().contains(&state))
+        accepts_from_states(self, &current_states, word)
     }
 
     /// Generates a DOT representation of the automaton
@@ -84,6 +63,31 @@ pub trait Automaton: Sized {
     fn is_isomorphic_to(&self, other: &Self) -> bool {
         automaton_isomorphic(self, other)
     }
+}
+
+/// Helper: simulates from a given set of initial states
+/// Used to customize the initial state set (e.g., epsilon closure for EpsilonNfa)
+pub(crate) fn accepts_from_states<A: Automaton>(
+    automaton: &A,
+    initial_states: &HashSet<usize>,
+    word: &str,
+) -> bool {
+    let bytes = word.as_bytes();
+    let mut current_states = initial_states.clone();
+
+    for &byte in bytes {
+        let mut next = HashSet::new();
+        for state in current_states {
+            next.extend(automaton.next_states(state, byte));
+        }
+        current_states = next;
+
+        if current_states.is_empty() {
+            return false;
+        }
+    }
+
+    current_states.into_iter().any(|state| automaton.accept_states().contains(&state))
 }
 
 /// Generic helper for converting any Automaton to DOT format
