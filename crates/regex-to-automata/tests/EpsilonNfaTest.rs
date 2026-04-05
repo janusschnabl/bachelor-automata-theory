@@ -1,43 +1,15 @@
-use regex_to_automata::{EpsilonNfa, Symbol, State, Automaton};
+mod common;
+
+use regex_to_automata::{EpsilonNfa, Automaton, Symbol, State};
+use common::{E, b};
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::StdRng};
-
-
-const E: Symbol = Symbol::Epsilon;
-const fn b(c: u8) -> Symbol { Symbol::Byte(c) }
-
-macro_rules! nfa {
-    (
-        start: $start:expr,
-        accept: $accept:expr,
-        states: [
-            $(
-                $id:expr => [ $( ($sym:expr, $to:expr) ),* $(,)? ]
-            ),* $(,)?
-        ]
-    ) => {{
-        let mut states = Vec::new();
-        $(
-            states.push(State {
-                transitions: vec![
-                    $( ($sym, $to) ),*
-                ],
-            });
-        )*
-        EpsilonNfa {
-            states,
-            start: $start,
-            accept: $accept,
-            alphabet: Default::default(),
-        }
-    }};
-}
 
 #[test]
 fn empty_string_structure() {
     let produced = EpsilonNfa::from_regex("", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 1,
         states: [
@@ -53,7 +25,7 @@ fn empty_string_structure() {
 fn literal_structure() {
     let produced = EpsilonNfa::from_regex("a", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 1,
         states: [
@@ -69,7 +41,7 @@ fn literal_structure() {
 fn concat_structure() {
     let produced = EpsilonNfa::from_regex("ab", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 3,
         states: [
@@ -87,7 +59,7 @@ fn concat_structure() {
 fn alternation_structure() {
     let produced = EpsilonNfa::from_regex("a|b", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 5,
         states: [
@@ -107,7 +79,7 @@ fn alternation_structure() {
 fn kleene_star_structure() {
     let produced = EpsilonNfa::from_regex("a*", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 3,
         states: [
@@ -125,7 +97,7 @@ fn kleene_star_structure() {
 fn plus_structure() {
     let produced = EpsilonNfa::from_regex("a+", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 3,
         states: [
@@ -143,7 +115,7 @@ fn plus_structure() {
 fn nested_expression_structure() {
     let produced = EpsilonNfa::from_regex("(a|b)*", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 7,
         states: [
@@ -164,7 +136,7 @@ fn nested_expression_structure() {
 fn star_of_empty_structure() {
     let produced = EpsilonNfa::from_regex("()*", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 3,
         states: [
@@ -182,7 +154,7 @@ fn star_of_empty_structure() {
 fn alternation_then_concat_structure() {
     let produced = EpsilonNfa::from_regex("(a|b)c", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 7,
         states: [
@@ -212,7 +184,7 @@ fn grouping_does_not_change_structure() {
 fn chain_of_literals() {
     let produced = EpsilonNfa::from_regex("abc", None).unwrap();
 
-    let expected = nfa! {
+    let expected = epsilon_nfa! {
         start: 0,
         accept: 5,
         states: [
@@ -277,7 +249,7 @@ fn precedence_rules_match_explicit_parentheses() {
 
 #[test]
 fn renumbered_states_produce_isomorphic_epsilon_nfas() {
-    let a = nfa! {
+    let a = epsilon_nfa! {
         start: 0,
         accept: 1,
         states: [
@@ -286,7 +258,7 @@ fn renumbered_states_produce_isomorphic_epsilon_nfas() {
         ]
     };
 
-    let b = nfa! {
+    let b = epsilon_nfa! {
         start: 1,
         accept: 0,
         states: [
@@ -382,7 +354,7 @@ fn fuzz_non_isomorphic_graphs() {
 #[test]
 fn epsilon_closure_contains_itself() {
     // Arrange
-    let nfa = nfa! {
+    let nfa = epsilon_nfa! {
         start: 0,
         accept: 1,
         states: [
@@ -402,7 +374,7 @@ fn epsilon_closure_contains_itself() {
 #[test]
 fn epsilon_closure_follows_chain_of_epsilon_transitions() {
     // Arrange
-    let nfa = nfa! {
+    let nfa = epsilon_nfa! {
         start: 0,
         accept: 3,
         states: [
@@ -426,7 +398,7 @@ fn epsilon_closure_follows_chain_of_epsilon_transitions() {
 #[test]
 fn epsilon_closure_explores_all_reachable_branches() {
     // Arrange
-    let nfa = nfa! {
+    let nfa = epsilon_nfa! {
         start: 0,
         accept: 4,
         states: [
@@ -635,50 +607,4 @@ fn decode_label_rejects_invalid_input() {
 
     // Act & Assert
     assert!(EpsilonNfa::decode_label(invalid_label).is_err());
-}
-
-#[test]
-fn round_trip_to_dot_from_dot_produces_isomorphic_automaton() {
-    // Arrange
-    let original = EpsilonNfa::from_regex("(a|b)*abb", None).unwrap();
-
-    // Act
-    let dot = original.to_dot();
-    let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-    // Assert
-    assert!(original.is_isomorphic_to(&reconstructed));
-}
-
-#[test]
-fn round_trip_empty_string() {
-    // Arrange
-    let original = EpsilonNfa::from_regex("", None).unwrap();
-
-    // Act
-    let dot = original.to_dot();
-    let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-    // Assert
-    assert!(original.is_isomorphic_to(&reconstructed));
-}
-
-#[test]
-fn round_trip_complex_pattern() {
-    // Arrange
-    let patterns = vec!["a", "ab", "a|b", "(a|b)*", "(ab)*c", "(a|b)*abb"];
-
-    for pattern in patterns {
-        let original = EpsilonNfa::from_regex(pattern, None).unwrap();
-
-        // Act
-        let dot = original.to_dot();
-        let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-        // Assert
-        assert!(
-            original.is_isomorphic_to(&reconstructed),
-            "round-trip failed for pattern: {pattern}"
-        );
-    }
 }

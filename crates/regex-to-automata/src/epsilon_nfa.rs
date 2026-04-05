@@ -4,15 +4,10 @@ use std::fmt;
 
 #[derive(Debug, Clone, Default)]
 pub struct EpsilonNfa {
-    pub states: Vec<State>,
+    pub states: Vec<crate::automaton::State<Symbol>>,
     pub start: usize,
     pub accept: usize,
     pub alphabet: HashSet<u8>,
-}
-
-#[derive(Debug, Clone)]
-pub struct State {
-    pub transitions: Vec<(Symbol, usize)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -42,18 +37,6 @@ impl EpsilonNfa {
         }
 
         closure
-    }
-
-    pub(crate) fn add_state(&mut self) -> usize {
-        let id = self.states.len();
-        self.states.push(State {
-            transitions: vec![],
-        });
-        id
-    }
-
-    pub(crate) fn add_transition(&mut self, from: usize, symbol: Symbol, to: usize) {
-        self.states[from].transitions.push((symbol, to));
     }
 
     pub(crate) fn extract_used_symbols(&self) -> HashSet<u8> {
@@ -107,10 +90,6 @@ impl fmt::Display for EpsilonNfa {
 impl Automaton for EpsilonNfa {
     type Label = Symbol;
 
-    fn state_count(&self) -> usize {
-        self.states.len()
-    }
-
     fn start_state(&self) -> usize {
         self.start
     }
@@ -121,12 +100,16 @@ impl Automaton for EpsilonNfa {
         set
     }
 
-    fn transitions_from(&self, state: usize) -> Vec<(Self::Label, usize)> {
-        self.states[state].transitions.clone()
-    }
-
     fn alphabet(&self) -> &HashSet<u8> {
         &self.alphabet
+    }
+
+    fn get_states(&self) -> &Vec<crate::automaton::State<Self::Label>> {
+        &self.states
+    }
+
+    fn get_states_mut(&mut self) -> &mut Vec<crate::automaton::State<Self::Label>> {
+        &mut self.states
     }
 
     fn encode_label(label: &Symbol) -> String {
@@ -172,4 +155,20 @@ impl Automaton for EpsilonNfa {
         let initial_states = self.epsilon_closure(self.start);
         crate::automaton::accepts_from_states(self, &initial_states, word)
     }
+
+    fn set_start(&mut self, state: usize) {
+        self.start = state;
+    }
+
+    fn set_accept_states(&mut self, states: HashSet<usize>) -> Result<()> {
+        if states.len() != 1 {
+            return Err(Error::InvalidInput(format!(
+                "EpsilonNfa requires exactly one accept state, got {}",
+                states.len()
+            )));
+        }
+        self.accept = states.into_iter().next().unwrap();
+        Ok(())
+    }
+
 }

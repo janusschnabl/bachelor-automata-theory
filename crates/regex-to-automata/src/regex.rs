@@ -1,4 +1,5 @@
 use crate::epsilon_nfa::{EpsilonNfa, Symbol};
+use crate::automaton::Automaton;
 use crate::Result;
 use regex_syntax::ast::{parse::Parser, Ast};
 use std::collections::HashSet;

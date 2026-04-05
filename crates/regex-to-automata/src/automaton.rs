@@ -3,14 +3,36 @@ use crate::errors::Result;
 use petgraph::graph::Graph;
 use petgraph::algo::is_isomorphic_matching;
 
+/// Generic state representation for any automaton
+#[derive(Debug, Clone)]
+pub struct State<L> {
+    pub transitions: Vec<(L, usize)>,
+}
+
+impl<L> State<L> {
+    pub fn new() -> Self {
+        State {
+            transitions: vec![],
+        }
+    }
+}
+
+impl<L> Default for State<L> {
+    fn default() -> Self {
+        State::new()
+    }
+}
+
 /// Core trait for automata types (EpsilonNfa, Nfa, Dfa)
 /// with custom label types and shared generic logic.
-pub trait Automaton: Sized {
+pub trait Automaton: Sized + Default {
     /// The label type used for edges
     type Label: Clone;
 
     /// Returns the number of states in the automaton
-    fn state_count(&self) -> usize;
+    fn state_count(&self) -> usize {
+        self.get_states().len()
+    }
 
     /// Returns the start state index
     fn start_state(&self) -> usize;
@@ -19,10 +41,18 @@ pub trait Automaton: Sized {
     fn accept_states(&self) -> HashSet<usize>;
 
     /// Returns transitions from a given state as (label, target_state) pairs
-    fn transitions_from(&self, state: usize) -> Vec<(Self::Label, usize)>;
+    fn transitions_from(&self, state: usize) -> Vec<(Self::Label, usize)> {
+        self.get_states()[state].transitions.clone()
+    }
 
     /// Returns the alphabet (set of symbols that can appear on edges)
     fn alphabet(&self) -> &HashSet<u8>;
+
+    /// Returns immutable reference to all states as a vector
+    fn get_states(&self) -> &Vec<State<Self::Label>>;
+
+    /// Returns mutable reference to all states as a vector
+    fn get_states_mut(&mut self) -> &mut Vec<State<Self::Label>>;
 
     /// Encodes a label to a string for serialization (to_dot)
     /// E.g., Symbol::Epsilon -> "ε", Symbol::Byte(65) -> "A"
@@ -53,9 +83,9 @@ pub trait Automaton: Sized {
     }
 
     /// Parses a DOT representation and reconstructs the automaton
-    /// Default implementation uses decode_label for edge labels
+    /// Default implementation parses via crate::dot::parse_dot_into_automaton
     fn from_dot(dot: &str) -> Result<Self> {
-        automaton_from_dot_impl(dot)
+        from_dot_default(dot)
     }
 
     /// Checks if two automata are isomorphic (structurally equivalent)
@@ -63,6 +93,25 @@ pub trait Automaton: Sized {
     fn is_isomorphic_to(&self, other: &Self) -> bool {
         automaton_isomorphic(self, other)
     }
+
+    /// Adds a new state to the automaton and returns its index
+    fn add_state(&mut self) -> usize {
+        let id = self.get_states().len();
+        self.get_states_mut().push(State::new());
+        id
+    }
+
+    /// Adds a transition from one state to another with the given label
+    fn add_transition(&mut self, from: usize, label: Self::Label, to: usize) {
+        self.get_states_mut()[from].transitions.push((label, to));
+    }
+
+    /// Sets the start state of the automaton
+    fn set_start(&mut self, state: usize);
+
+    /// Sets the accept states of the automaton (implementation-specific behavior)
+    /// Returns an error if the states are invalid for this automaton type
+    fn set_accept_states(&mut self, states: HashSet<usize>) -> Result<()>;
 }
 
 /// Helper: simulates from a given set of initial states
@@ -89,6 +138,19 @@ pub(crate) fn accepts_from_states<A: Automaton>(
 
     current_states.into_iter().any(|state| automaton.accept_states().contains(&state))
 }
+
+/// Default implementation of from_dot parsing for any Automaton type
+/// Parse DOT, populate states, and apply start/accept configuration
+/// Can be called by type-specific overrides for validation
+pub(crate) fn from_dot_default<A: Automaton>(dot: &str) -> Result<A> {
+    let mut automaton = A::default();
+    let (start, accept_states) = crate::dot::parse_dot_into_automaton(&mut automaton, dot)?;
+    automaton.set_start(start);
+    automaton.set_accept_states(accept_states)?;
+    Ok(automaton)
+}
+
+
 
 /// Generic helper for converting any Automaton to DOT format
 fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
@@ -129,16 +191,6 @@ fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
 
     s.push_str("}\n");
     s
-}
-
-/// Generic helper for parsing DOT format and reconstructing an Automaton
-/// Note: This is a placeholder that returns an error.
-/// Each concrete type (EpsilonNfa, Nfa, Dfa) must implement from_dot() themselves
-/// because they need to call their constructors and methods.
-fn automaton_from_dot_impl<A: Automaton>(_dot: &str) -> Result<A> {
-    Err(crate::errors::Error::UnsupportedFeature(
-        "from_dot generic implementation not available; use type-specific implementation",
-    ))
 }
 
 /// Node attributes for graph representation (used in isomorphism checking)
