@@ -1,282 +1,15 @@
-use regex_to_automata::{EpsilonNfa, Symbol, State};
+mod common;
+
+use regex_to_automata::{EpsilonNfa, Automaton, Symbol, State};
+use common::{E, b};
 use rand::seq::SliceRandom;
 use rand::{SeedableRng, rngs::StdRng};
 
 
-const E: Symbol = Symbol::Epsilon;
-const fn b(c: u8) -> Symbol { Symbol::Byte(c) }
-
-macro_rules! nfa {
-    (
-        start: $start:expr,
-        accept: $accept:expr,
-        states: [
-            $(
-                $id:expr => [ $( ($sym:expr, $to:expr) ),* $(,)? ]
-            ),* $(,)?
-        ]
-    ) => {{
-        let mut states = Vec::new();
-        $(
-            states.push(State {
-                transitions: vec![
-                    $( ($sym, $to) ),*
-                ],
-            });
-        )*
-        EpsilonNfa {
-            states,
-            start: $start,
-            accept: $accept,
-        }
-    }};
-}
-
-#[test]
-fn empty_string_structure() {
-    let produced = EpsilonNfa::from_regex("").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 1,
-        states: [
-            0 => [(E,1)],
-            1 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn literal_structure() {
-    let produced = EpsilonNfa::from_regex("a").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 1,
-        states: [
-            0 => [(b(b'a'),1)],
-            1 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn concat_structure() {
-    let produced = EpsilonNfa::from_regex("ab").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 3,
-        states: [
-            0 => [(b(b'a'),1)],
-            1 => [(E,2)],
-            2 => [(b(b'b'),3)],
-            3 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn alternation_structure() {
-    let produced = EpsilonNfa::from_regex("a|b").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 5,
-        states: [
-            0 => [(E,1),(E,3)],
-            1 => [(b(b'a'),2)],
-            2 => [(E,5)],
-            3 => [(b(b'b'),4)],
-            4 => [(E,5)],
-            5 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn kleene_star_structure() {
-    let produced = EpsilonNfa::from_regex("a*").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 3,
-        states: [
-            0 => [(E,1),(E,3)],
-            1 => [(b(b'a'),2)],
-            2 => [(E,1),(E,3)],
-            3 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn plus_structure() {
-    let produced = EpsilonNfa::from_regex("a+").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 3,
-        states: [
-            0 => [(E,1)],
-            1 => [(b(b'a'),2)],
-            2 => [(E,1),(E,3)],
-            3 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn nested_expression_structure() {
-    let produced = EpsilonNfa::from_regex("(a|b)*").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 7,
-        states: [
-            0 => [(E,1),(E,7)],
-            1 => [(E,2),(E,4)],
-            2 => [(b(b'a'),3)],
-            3 => [(E,6)],
-            4 => [(b(b'b'),5)],
-            5 => [(E,6)],
-            6 => [(E,1),(E,7)],
-            7 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-#[test]
-fn star_of_empty_structure() {
-    let produced = EpsilonNfa::from_regex("()*").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 3,
-        states: [
-            0 => [(E,1),(E,3)],
-            1 => [(E,2)],
-            2 => [(E,1),(E,3)],
-            3 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn alternation_then_concat_structure() {
-    let produced = EpsilonNfa::from_regex("(a|b)c").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 7,
-        states: [
-            0 => [(E,1),(E,3)],
-            1 => [(b(b'a'),2)],
-            2 => [(E,5)],
-            3 => [(b(b'b'),4)],
-            4 => [(E,5)],
-            5 => [(E,6)],
-            6 => [(b(b'c'),7)],
-            7 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn grouping_does_not_change_structure() {
-    let a = EpsilonNfa::from_regex("ab").unwrap();
-    let b = EpsilonNfa::from_regex("(ab)").unwrap();
-
-    assert!(a.is_isomorphic_to(&b));
-}
-
-#[test]
-fn chain_of_literals() {
-    let produced = EpsilonNfa::from_regex("abc").unwrap();
-
-    let expected = nfa! {
-        start: 0,
-        accept: 5,
-        states: [
-            0 => [(b(b'a'),1)],
-            1 => [(E,2)],
-            2 => [(b(b'b'),3)],
-            3 => [(E,4)],
-            4 => [(b(b'c'),5)],
-            5 => [],
-        ]
-    };
-
-    assert!(produced.is_isomorphic_to(&expected));
-}
-
-#[test]
-fn alternation_is_left_associative() {
-    let a = EpsilonNfa::from_regex("a|b|c").unwrap();
-    let b = EpsilonNfa::from_regex("(a|b)|c").unwrap();
-    let c = EpsilonNfa::from_regex("a|(b|c)").unwrap();
-
-    assert!(a.is_isomorphic_to(&b));
-    assert!(!a.is_isomorphic_to(&c));
-}
-
-
-#[test]
-fn precedence_rules_match_explicit_parentheses() {
-    // Verify that implicit precedence matches explicit parentheses.
-    // Regex precedence (highest → lowest):
-    //   1. Kleene operators (*, +)
-    //   2. Concatenation
-    //   3. Alternation (|)
-
-    let cases = [
-        // concat > |
-        ("a|bc", "a|(bc)"),
-        ("ab|c", "(ab)|c"),
-
-        // * > |
-        ("a|b*", "a|(b*)"),
-        ("a|b+", "a|(b+)"),
-
-        // * > concat
-        ("ab*", "a(b*)"),
-        ("ab+", "a(b+)"),
-
-        // full precedence chain
-        ("a|bc*", "a|(b(c*))"),
-    ];
-
-    for (implicit, explicit) in cases {
-        let a = EpsilonNfa::from_regex(implicit).unwrap();
-        let b = EpsilonNfa::from_regex(explicit).unwrap();
-
-        assert!(
-            a.is_isomorphic_to(&b),
-            "expected {implicit:?} and {explicit:?} to parse equivalently"
-        );
-    }
-}
 
 #[test]
 fn renumbered_states_produce_isomorphic_epsilon_nfas() {
-    let a = nfa! {
+    let a = epsilon_nfa! {
         start: 0,
         accept: 1,
         states: [
@@ -285,7 +18,7 @@ fn renumbered_states_produce_isomorphic_epsilon_nfas() {
         ]
     };
 
-    let b = nfa! {
+    let b = epsilon_nfa! {
         start: 1,
         accept: 0,
         states: [
@@ -322,6 +55,7 @@ fn permute_states(nfa: &EpsilonNfa, rng: &mut StdRng) -> EpsilonNfa {
         states: new_states,
         start: perm[nfa.start],
         accept: perm[nfa.accept],
+        alphabet: nfa.alphabet.clone(),
     }
 }
 #[test]
@@ -342,7 +76,7 @@ fn fuzz_isomorphism_with_random_permutations() {
     ];
 
     for r in regexes {
-        let nfa = EpsilonNfa::from_regex(r).unwrap();
+        let nfa = EpsilonNfa::from_regex(r, None).unwrap();
 
         for _ in 0..500 {
             let permuted = permute_states(&nfa, &mut rng);
@@ -363,8 +97,8 @@ fn fuzz_non_isomorphic_graphs() {
 
     let mut rng = StdRng::seed_from_u64(seed);
 
-    let a = EpsilonNfa::from_regex("ab").unwrap();
-    let b = EpsilonNfa::from_regex("a|b").unwrap();
+    let a = EpsilonNfa::from_regex("ab", None).unwrap();
+    let b = EpsilonNfa::from_regex("a|b", None).unwrap();
 
     for _ in 0..100 {
         let pa = permute_states(&a, &mut rng);
@@ -375,4 +109,262 @@ fn fuzz_non_isomorphic_graphs() {
             "seed={seed}"
         );
     }
+}
+
+#[test]
+fn epsilon_closure_contains_itself() {
+    // Arrange
+    let nfa = epsilon_nfa! {
+        start: 0,
+        accept: 1,
+        states: [
+            0 => [(b(b'a'), 1)],
+            1 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 1);
+    assert!(closure.contains(&0));
+}
+
+#[test]
+fn epsilon_closure_follows_chain_of_epsilon_transitions() {
+    // Arrange
+    let nfa = epsilon_nfa! {
+        start: 0,
+        accept: 3,
+        states: [
+            0 => [(E, 1)],
+            1 => [(E, 2)],
+            2 => [(b(b'a'), 3)],
+            3 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 3);
+    assert!(closure.contains(&0));
+    assert!(closure.contains(&1));
+    assert!(closure.contains(&2));
+}
+
+#[test]
+fn epsilon_closure_explores_all_reachable_branches() {
+    // Arrange
+    let nfa = epsilon_nfa! {
+        start: 0,
+        accept: 4,
+        states: [
+            0 => [(E, 1), (E, 2)],
+            1 => [(b(b'a'), 3)],
+            2 => [(b(b'b'), 4)],
+            3 => [],
+            4 => [],
+        ]
+    };
+
+    // Act
+    let closure = nfa.epsilon_closure(0);
+
+    // Assert
+    assert_eq!(closure.len(), 3);
+    assert!(closure.contains(&0));
+    assert!(closure.contains(&1));
+    assert!(closure.contains(&2));
+}
+
+#[test]
+fn empty_regex_accepts_empty_string() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts(""));
+    assert!(!nfa.accepts("a"));
+}
+
+#[test]
+fn single_character_regex_accepts_exact_match() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("a"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("aa"));
+}
+
+#[test]
+fn concatenation_accepts_exact_sequence() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("ab", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("ab"));
+    assert!(!nfa.accepts("a"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ba"));
+    assert!(!nfa.accepts(""));
+}
+
+#[test]
+fn alternation_accepts_any_option() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a|b", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("c"));
+}
+
+#[test]
+fn kleene_star_accepts_zero_or_more_occurrences() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a*", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts(""));
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("aa"));
+    assert!(nfa.accepts("aaa"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts("aab"));
+}
+
+#[test]
+fn plus_accepts_one_or_more_occurrences() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("a+", None).unwrap();
+
+    // Act & Assert
+    assert!(!nfa.accepts(""));
+    assert!(nfa.accepts("a"));
+    assert!(nfa.accepts("aa"));
+    assert!(nfa.accepts("aaa"));
+    assert!(!nfa.accepts("b"));
+    assert!(!nfa.accepts("ab"));
+}
+
+#[test]
+fn complex_pattern_accepts_valid_strings_and_rejects_invalid() {
+    // Arrange
+    let nfa = EpsilonNfa::from_regex("(a|b)*abb", None).unwrap();
+
+    // Act & Assert
+    assert!(nfa.accepts("abb"));
+    assert!(nfa.accepts("aabb"));
+    assert!(nfa.accepts("babb"));
+    assert!(nfa.accepts("aababb"));
+    assert!(nfa.accepts("bababb"));
+    assert!(!nfa.accepts(""));
+    assert!(!nfa.accepts("ab"));
+    assert!(!nfa.accepts("aba"));
+    assert!(!nfa.accepts("abba"));
+}
+
+#[test]
+fn encode_label_epsilon_to_string() {
+    // Arrange
+    let epsilon = Symbol::Epsilon;
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&epsilon);
+
+    // Assert
+    assert_eq!(encoded, "ε");
+}
+
+#[test]
+fn encode_label_byte_ascii_graphic() {
+    // Arrange
+    let byte_a = Symbol::Byte(b'A');
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&byte_a);
+
+    // Assert
+    assert_eq!(encoded, "A");
+}
+
+#[test]
+fn encode_label_byte_non_graphic_hex() {
+    // Arrange
+    let byte_null = Symbol::Byte(0x00);
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&byte_null);
+
+    // Assert
+    assert_eq!(encoded, "0x00");
+}
+
+#[test]
+fn decode_label_epsilon_from_string() {
+    // Arrange
+    let label_str = "ε";
+
+    // Act
+    let decoded = EpsilonNfa::decode_label(label_str).unwrap();
+
+    // Assert
+    assert_eq!(decoded, Symbol::Epsilon);
+}
+
+#[test]
+fn decode_label_byte_ascii_graphic() {
+    // Arrange
+    let label_str = "A";
+
+    // Act
+    let decoded = EpsilonNfa::decode_label(label_str).unwrap();
+
+    // Assert
+    assert_eq!(decoded, Symbol::Byte(b'A'));
+}
+
+#[test]
+fn encode_decode_roundtrip_epsilon() {
+    // Arrange
+    let original = Symbol::Epsilon;
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&original);
+    let decoded = EpsilonNfa::decode_label(&encoded).unwrap();
+
+    // Assert
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn encode_decode_roundtrip_byte() {
+    // Arrange
+    let original = Symbol::Byte(b'X');
+
+    // Act
+    let encoded = EpsilonNfa::encode_label(&original);
+    let decoded = EpsilonNfa::decode_label(&encoded).unwrap();
+
+    // Assert
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn decode_label_rejects_invalid_input() {
+    // Arrange
+    let invalid_label = "xyz";
+
+    // Act & Assert
+    assert!(EpsilonNfa::decode_label(invalid_label).is_err());
 }
