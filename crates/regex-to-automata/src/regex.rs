@@ -10,6 +10,10 @@ impl EpsilonNfa {
             return Err(crate::Error::UnsupportedFeature("only ASCII regex supported"));
         }
 
+        if regex.contains('\\') {
+            return Err(crate::Error::UnsupportedFeature("backslash not supported"));
+        }
+
         let ast = Parser::new().parse(regex)?;
 
         let mut nfa = EpsilonNfa::new();
@@ -18,6 +22,8 @@ impl EpsilonNfa {
         nfa.accept = accept;
 
         let used_symbols = nfa.extract_used_symbols();
+        EpsilonNfa::ensure_dot_friendly_labels(&used_symbols)?;
+        
         nfa.alphabet = match alphabet {
             Some(custom_alphabet) => {
                 if !used_symbols.is_subset(&custom_alphabet) {

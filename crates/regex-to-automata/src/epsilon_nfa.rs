@@ -50,6 +50,18 @@ impl EpsilonNfa {
         }
         symbols
     }
+
+    pub(crate) fn ensure_dot_friendly_labels(symbols: &HashSet<u8>) -> crate::Result<()> {
+        for &b in symbols {
+            if b != b' ' && !b.is_ascii_graphic() {
+                return Err(crate::Error::InvalidInput(format!(
+                    "regex contains non-printable byte 0x{:02X}",
+                    b
+                )));
+            }
+        }
+        Ok(())
+    }
 }
 
 impl fmt::Display for Symbol {
@@ -116,7 +128,9 @@ impl Automaton for EpsilonNfa {
         match label {
             Symbol::Epsilon => "ε".to_string(),
             Symbol::Byte(b) => {
-                if b.is_ascii_graphic() {
+                if *b == b' ' {
+                    "' '".to_string()
+                } else if b.is_ascii_graphic() {
                     format!("{}", *b as char)
                 } else {
                     format!("0x{:02X}", b)
@@ -128,8 +142,15 @@ impl Automaton for EpsilonNfa {
     fn decode_label(label: &str) -> Result<Symbol> {
         if label == "ε" {
             Ok(Symbol::Epsilon)
+        } else if label == "' '" {
+            Ok(Symbol::Byte(b' '))
         } else if label.len() == 1 {
             Ok(Symbol::Byte(label.as_bytes()[0]))
+        } else if label.starts_with("0x") && label.len() == 4 {
+            let hex_str = &label[2..];
+            let byte = u8::from_str_radix(hex_str, 16)
+                .map_err(|_| Error::InvalidInput(format!("invalid hex label: {label}")))?;
+            Ok(Symbol::Byte(byte))
         } else {
             Err(Error::InvalidInput(format!("invalid label: {label}")))
         }
