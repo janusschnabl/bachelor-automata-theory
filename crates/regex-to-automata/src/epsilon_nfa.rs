@@ -21,7 +21,6 @@ impl EpsilonNfa {
         Self::default()
     }
 
-    //TODO: JAnus har også implementeret det her et andet sted, så det skal lige forenes.
     pub fn epsilon_closure(&self, state: usize) -> HashSet<usize> {
         let mut closure = HashSet::new();
         let mut stack = vec![state];
@@ -191,5 +190,4 @@ impl Automaton for EpsilonNfa {
         self.accept = states.into_iter().next().unwrap();
         Ok(())
     }
-
 }
