@@ -1,5 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
-use regex_to_automata::{EpsilonNfa, Nfa};
+use regex_to_automata::{Automaton, EpsilonNfa};
 use serde::{Deserialize, Serialize};
 
 define_env!(RegexToNfaEnv);
@@ -21,39 +21,40 @@ impl Env for RegexToNfaEnv {
 
     type Meta = ();
 
+    //TODO: shall be changed to run for NFA
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
-        let enfa =
-            EpsilonNfa::from_regex(&input.regex).map_err(|e| EnvError::InvalidInputForProgram {
-                message: e.to_string(),
-                source: None,
-            })?;
-        let nfa = enfa.to_nfa();
-
-        Ok(Output { dot: nfa.to_dot() })
-    }
-
-    fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
-        //TODO: should we use other error types? ie not just InvalidInputForProgram.
-        let expected_enfa = EpsilonNfa::from_regex(&_input.regex).map_err(|e| {
+        let nfa = EpsilonNfa::from_regex(&input.regex, None).map_err(|e| {
             EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             }
         })?;
-        let expected = expected_enfa.to_nfa();
 
-        let produced =
-            Nfa::from_dot(_output.dot.as_str()).map_err(|e| EnvError::InvalidInputForProgram {
+        Ok(Output { dot: nfa.to_dot() })
+    }
+
+    //TODO shall be changed to validate for NFA
+    fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
+        //TODO: should we use other error types? ie not just InvalidInputForProgram.
+        let expected = EpsilonNfa::from_regex(&_input.regex, None).map_err(|e| {
+            EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
-            })?;
+            }
+        })?;
+        let produced = EpsilonNfa::from_dot(_output.dot.as_str()).map_err(|e| {
+            EnvError::InvalidInputForProgram {
+                message: e.to_string(),
+                source: None,
+            }
+        })?;
 
         let is_isomorphic = produced.is_isomorphic_to(&expected);
         if is_isomorphic {
             Ok(ValidationResult::Correct)
         } else {
             Ok(ValidationResult::Mismatch {
-                reason: "produced NFA is not isomorphic to expected".into(),
+                reason: "produced automaton is not isomorphic to expected".into(),
             })
         }
     }
