@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use crate::{EpsilonNfa, State, Symbol};
 
+//PLEEAAASE
 pub struct Nfa {
     pub states: Vec<State>,
     pub start: usize,
