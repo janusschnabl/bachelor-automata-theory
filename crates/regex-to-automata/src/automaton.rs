@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::collections::{BTreeMap, BTreeSet};
 use crate::errors::Result;
 use petgraph::graph::Graph;
 use petgraph::algo::is_isomorphic_matching;
@@ -200,8 +201,8 @@ pub struct NodeAttr {
     pub accept: bool,
 }
 
-/// Generic helper to convert any Automaton to a graph representation
-pub fn automaton_to_graph_impl<A: Automaton>(automaton: &A) -> Graph<NodeAttr, String> {
+/// Generic helper to convert any Automaton to a (non multigraph) graph representation
+pub(crate) fn automaton_to_graph_impl<A: Automaton>(automaton: &A) -> Graph<NodeAttr, BTreeSet<String>> {
     let mut g = Graph::new();
     let mut nodes = Vec::new();
 
@@ -215,17 +216,24 @@ pub fn automaton_to_graph_impl<A: Automaton>(automaton: &A) -> Graph<NodeAttr, S
         }));
     }
 
+    let mut edge_labels: BTreeMap<(usize, usize), BTreeSet<String>> = BTreeMap::new();
+
     for from in 0..automaton.state_count() {
         for (label, to) in automaton.transitions_from(from) {
-            let encoded = A::encode_label(&label);
-            g.add_edge(nodes[from], nodes[to], encoded);
+            edge_labels
+                .entry((from, to))
+                .or_default()
+                .insert(A::encode_label(&label));
         }
+    }
+
+    for ((from, to), labels) in edge_labels {
+        g.add_edge(nodes[from], nodes[to], labels);
     }
 
     g
 }
 
-/// Generic helper to check if two automata are isomorphic
 pub fn automaton_isomorphic<A: Automaton>(a: &A, b: &A) -> bool {
     if a.state_count() != b.state_count() {
         return false;
@@ -240,4 +248,40 @@ pub fn automaton_isomorphic<A: Automaton>(a: &A, b: &A) -> bool {
         |na, nb| na == nb,
         |ea, eb| ea == eb,
     )
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::epsilon_nfa::Symbol;
+    use petgraph::visit::EdgeRef;
+    use crate::nfa::Nfa;
+
+    #[test]
+    //so we don't pass multigraphs to the isomorphism checker.
+    fn automaton_to_graph_collapses_parallel_edges() {
+        let mut nfa = Nfa::default();
+
+        let s0 = nfa.add_state();
+        let s1 = nfa.add_state();
+
+        nfa.set_start(s0);
+        nfa.set_accept_states([s1].into()).unwrap();
+
+        nfa.add_transition(s0, Symbol::Byte(b'a'), s1);
+        nfa.add_transition(s0, Symbol::Byte(b'b'), s1);
+
+        let graph = automaton_to_graph_impl(&nfa);
+
+        let edges: Vec<_> = graph.edge_references().collect();
+
+        assert_eq!(edges.len(), 1);
+
+        let labels = edges[0].weight();
+
+        assert!(labels.contains("a"));
+        assert!(labels.contains("b"));
+        assert_eq!(labels.len(), 2);
+    }
 }
