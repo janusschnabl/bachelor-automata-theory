@@ -1,55 +1,48 @@
-use petgraph::algo::is_isomorphic_matching;
-use petgraph::graph::Graph;
-use std::collections::HashMap;
+use crate::automaton::State;
+use crate::epsilon_nfa::Symbol;
+use crate::{Automaton, EpsilonNfa, Error, Result};
+use std::collections::{HashMap, HashSet};
 
-use crate::{EpsilonNfa, State, Symbol};
-
+#[derive(Debug, Clone, Default)]
 pub struct Nfa {
-    pub states: Vec<State>,
+    pub states: Vec<State<Symbol>>,
     pub start: usize,
     pub accept: Vec<usize>,
 }
 
 impl EpsilonNfa {
-    pub fn eclose(&self, state: usize) -> Vec<usize> {
-        let mut visited = vec![false; self.states.len()];
-        let mut stack = vec![state];
-        visited[state] = true;
+    pub fn to_nfa(&self) -> Nfa {
+        let ecloses = self.compute_epsilon_closures();
+        let reachable = self.find_reachable_states(&ecloses);
+        let (state_mapping, mut nfa_states, accept_states) =
+            self.build_state_mapping(&ecloses, &reachable);
+        self.build_transitions(&ecloses, &state_mapping, &mut nfa_states);
 
-        while let Some(s) = stack.pop() {
-            for (sym, target) in &self.states[s].transitions {
-                if *sym == Symbol::Epsilon && !visited[*target] {
-                    visited[*target] = true;
-                    stack.push(*target);
-                }
-            }
+        Nfa {
+            states: nfa_states,
+            start: state_mapping.get(&self.start).copied().unwrap_or(0),
+            accept: accept_states,
         }
+    }
 
-        visited
-            .into_iter()
-            .enumerate()
-            .filter_map(|(i, v)| if v { Some(i) } else { None })
+    fn compute_epsilon_closures(&self) -> Vec<HashSet<usize>> {
+        (0..self.states.len())
+            .map(|s| self.epsilon_closure(s))
             .collect()
     }
 
-    pub fn to_nfa(&self) -> Nfa {
-        // STEP 1: Find the Epsilon Closure
-        let ecloses: Vec<Vec<usize>> = (0..self.states.len()).map(|s| self.eclose(s)).collect();
-
-        // STEP 2: Discover reachable states only
-        let mut reachable: Vec<bool> = vec![false; self.states.len()];
-        let mut queue: Vec<usize> = vec![self.start];
+    fn find_reachable_states(&self, ecloses: &[HashSet<usize>]) -> Vec<bool> {
+        let mut reachable = vec![false; self.states.len()];
+        let mut queue = vec![self.start];
         reachable[self.start] = true;
 
         let mut i = 0;
         while i < queue.len() {
             let s = queue[i];
             i += 1;
-
-            let eclose_s = &ecloses[s];
-            for &e in eclose_s {
+            for &e in &ecloses[s] {
                 for (sym, target) in &self.states[e].transitions {
-                    if let Symbol::Byte(_b) = sym {
+                    if let Symbol::Byte(_) = sym {
                         if !reachable[*target] {
                             reachable[*target] = true;
                             queue.push(*target);
@@ -58,41 +51,48 @@ impl EpsilonNfa {
                 }
             }
         }
+        reachable
+    }
 
-        let mut state_mapping: HashMap<usize, usize> = HashMap::new();
-        let mut nfa_states: Vec<State> = Vec::new();
-        let mut accept_states: Vec<usize> = Vec::new();
+    fn build_state_mapping(
+        &self,
+        ecloses: &[HashSet<usize>],
+        reachable: &[bool],
+    ) -> (HashMap<usize, usize>, Vec<State<Symbol>>, Vec<usize>) {
+        let mut state_mapping = HashMap::new();
+        let mut nfa_states = Vec::new();
+        let mut accept_states = Vec::new();
 
         for (old_idx, &is_reachable) in reachable.iter().enumerate() {
             if is_reachable {
                 let new_idx = nfa_states.len();
                 state_mapping.insert(old_idx, new_idx);
-                nfa_states.push(State {
-                    transitions: vec![],
-                });
+                nfa_states.push(State::new());
 
-                // STEP 4: Mark accepting states
                 if ecloses[old_idx].contains(&self.accept) {
                     accept_states.push(new_idx);
                 }
             }
         }
+        (state_mapping, nfa_states, accept_states)
+    }
 
-        // STEP 3: Define the Transitions
-        for (old_idx, &new_idx) in &state_mapping {
-            let eclose_s = &ecloses[*old_idx];
+    fn build_transitions(
+        &self,
+        ecloses: &[HashSet<usize>],
+        state_mapping: &HashMap<usize, usize>,
+        nfa_states: &mut Vec<State<Symbol>>,
+    ) {
+        for (&old_idx, &new_idx) in state_mapping {
+            let mut symbol_targets: HashMap<u8, HashSet<usize>> = HashMap::new();
 
-            let mut symbol_targets: HashMap<u8, Vec<usize>> = HashMap::new();
-
-            for &e in eclose_s {
+            for &e in &ecloses[old_idx] {
                 for (sym, target) in &self.states[e].transitions {
                     if let Symbol::Byte(b) = sym {
-                        let targets = symbol_targets.entry(*b).or_insert_with(Vec::new);
-                        for &t in &ecloses[*target] {
-                            if !targets.contains(&t) {
-                                targets.push(t);
-                            }
-                        }
+                        symbol_targets
+                            .entry(*b)
+                            .or_default()
+                            .extend(&ecloses[*target]);
                     }
                 }
             }
@@ -107,63 +107,64 @@ impl EpsilonNfa {
                 }
             }
         }
-
-        let new_start = state_mapping.get(&self.start).copied().unwrap_or(0);
-
-        Nfa {
-            states: nfa_states,
-            start: new_start,
-            accept: accept_states,
-        }
     }
 }
 
-impl Nfa {
-    pub fn is_isomorphic_to(&self, other: &Nfa) -> bool {
-        if self.states.len() != other.states.len() {
-            return false;
-        }
-        isomorphic_nfa(self, other)
-    }
-}
+// Implementer Automaton-traitten så al generisk logik virker
+impl Automaton for Nfa {
+    type Label = Symbol;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-struct NfaNodeAttr {
-    start: bool,
-    accept: bool,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-struct NfaEdgeAttr {
-    byte: u8,
-}
-
-fn to_nfa_graph(nfa: &Nfa) -> Graph<NfaNodeAttr, NfaEdgeAttr> {
-    let mut g = Graph::new();
-    let mut nodes = Vec::new();
-
-    for i in 0..nfa.states.len() {
-        let is_accept = nfa.accept.contains(&i);
-        nodes.push(g.add_node(NfaNodeAttr {
-            start: i == nfa.start,
-            accept: is_accept,
-        }));
+    fn start_state(&self) -> usize {
+        self.start
     }
 
-    for (i, state) in nfa.states.iter().enumerate() {
-        for (sym, target) in &state.transitions {
-            if let Symbol::Byte(b) = sym {
-                g.add_edge(nodes[i], nodes[*target], NfaEdgeAttr { byte: *b });
-            }
-        }
+    fn accept_states(&self) -> HashSet<usize> {
+        self.accept.iter().copied().collect()
     }
 
-    g
-}
+    fn alphabet(&self) -> &HashSet<u8> {
+        // NFA har ikke et eksplicit alfabet-felt som EpsilonNfa,
+        // så vi returnerer en tom reference — overvej at tilføje feltet
+        unimplemented!("Nfa mangler alphabet-felt — tilføj `pub alphabet: HashSet<u8>`")
+    }
 
-fn isomorphic_nfa(a: &Nfa, b: &Nfa) -> bool {
-    let ga = to_nfa_graph(a);
-    let gb = to_nfa_graph(b);
+    fn get_states(&self) -> &Vec<State<Symbol>> {
+        &self.states
+    }
 
-    is_isomorphic_matching(&ga, &gb, |na, nb| na == nb, |ea, eb| ea == eb)
+    fn get_states_mut(&mut self) -> &mut Vec<State<Symbol>> {
+        &mut self.states
+    }
+
+    fn encode_label(label: &Symbol) -> String {
+        // Genbrug EpsilonNfa's implementation
+        crate::epsilon_nfa::EpsilonNfa::encode_label(label) // eller kopier logikken
+    }
+
+    fn decode_label(label: &str) -> Result<Symbol> {
+        crate::epsilon_nfa::EpsilonNfa::decode_label(label)
+    }
+
+    fn next_states(&self, state: usize, byte: u8) -> HashSet<usize> {
+        self.states[state]
+            .transitions
+            .iter()
+            .filter_map(|(sym, target)| {
+                if let Symbol::Byte(b) = sym {
+                    if *b == byte { Some(*target) } else { None }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    fn set_start(&mut self, state: usize) {
+        self.start = state;
+    }
+
+    fn set_accept_states(&mut self, states: HashSet<usize>) -> Result<()> {
+        self.accept = states.into_iter().collect();
+        Ok(())
+    }
 }
