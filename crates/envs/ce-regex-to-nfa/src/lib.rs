@@ -86,7 +86,7 @@ impl Generate for Input {
         }
 
         Self {
-            regex: gen_regex(rng, 5),
+            regex: gen_regex(rng, 3),
         }
     }
 }

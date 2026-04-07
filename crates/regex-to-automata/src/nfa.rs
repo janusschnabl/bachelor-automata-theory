@@ -1,7 +1,7 @@
 use crate::automaton::State;
 use crate::epsilon_nfa::Symbol;
-use crate::{Automaton, EpsilonNfa, Error, Result};
-use std::collections::{HashMap, HashSet};
+use crate::{Automaton, EpsilonNfa, Result};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Default)]
 pub struct Nfa {
@@ -12,17 +12,17 @@ pub struct Nfa {
 
 impl EpsilonNfa {
     pub fn to_nfa(&self) -> Nfa {
-        let ecloses = self.compute_epsilon_closures();
-        let reachable = self.find_reachable_states(&ecloses);
-        let (state_mapping, mut nfa_states, accept_states) =
-            self.build_state_mapping(&ecloses, &reachable);
-        self.build_transitions(&ecloses, &state_mapping, &mut nfa_states);
+        let epsilon_closures = self.compute_epsilon_closures();
+        let new_transitions_from_states: Vec<HashSet<(u8, usize)>> = self.states.iter().enumerate()
+            .map(|(s,_)| self.new_transitions(s, &epsilon_closures)).collect();
+        
+        let accepting_states: HashSet<usize> = (0..epsilon_closures.len())
+            .filter(|idx| epsilon_closures[*idx].contains(&self.accept))
+            .collect();
 
-        Nfa {
-            states: nfa_states,
-            start: state_mapping.get(&self.start).copied().unwrap_or(0),
-            accept: accept_states,
-        }
+
+        let nfa = self.build_nfa(new_transitions_from_states, accepting_states);
+        nfa.pruned()
     }
 
     fn compute_epsilon_closures(&self) -> Vec<HashSet<usize>> {
@@ -31,82 +31,108 @@ impl EpsilonNfa {
             .collect()
     }
 
-    fn find_reachable_states(&self, ecloses: &[HashSet<usize>]) -> Vec<bool> {
-        let mut reachable = vec![false; self.states.len()];
-        let mut queue = vec![self.start];
-        reachable[self.start] = true;
+    fn new_transitions(&self, state:usize, epsilon_closures: &Vec<HashSet<usize>>) -> HashSet<(u8, usize)> {
+        let mut transitions: HashSet<(u8, usize)> = HashSet::new();
 
-        let mut i = 0;
-        while i < queue.len() {
-            let s = queue[i];
-            i += 1;
-            for &e in &ecloses[s] {
-                for (sym, target) in &self.states[e].transitions {
-                    if let Symbol::Byte(_) = sym {
-                        if !reachable[*target] {
-                            reachable[*target] = true;
-                            queue.push(*target);
-                        }
-                    }
+        for byte in self.outgoing_symbols_from_states(&epsilon_closures[state]) {
+            for next_state in self.next_states(state, byte) {
+                transitions.insert((byte, next_state));
+            }
+        }
+
+        transitions
+    }
+
+    fn outgoing_symbols_from_states(&self, states: &HashSet<usize>) -> HashSet<u8> {
+        let mut transitions: HashSet<u8> = HashSet::new();
+    
+        for &state in states {
+            for (symbol, target) in &self.states[state].transitions {
+                if let Symbol::Byte(b) = symbol {
+                    transitions.insert(*b);
                 }
             }
         }
+
+        transitions       
+    }
+
+    fn build_nfa(&self, transitions_per_state: Vec<HashSet<(u8, usize)>>, accepting_states: HashSet<usize>) -> Nfa {
+        let states = transitions_per_state.iter().map(|transitions| {
+            let state_transitions: Vec<(Symbol, usize)> = transitions.iter()
+                .map(|&(byte, target)| (Symbol::Byte(byte), target))
+                .collect();
+            State { transitions: state_transitions }
+        }).collect();
+
+        Nfa {
+            states,
+            start: self.start,
+            accept: accepting_states.into_iter().collect(),
+        }
+    }
+}
+
+impl Nfa {
+    pub fn pruned(&self) -> Nfa {
+        let reachable = self.reachable_states();
+
+        let mut idx_mapping = vec![None; self.states.len()];
+        let mut new_states = Vec::new();
+
+        for old_idx in 0..self.states.len() {
+            if reachable.contains(&old_idx) {
+                let new_idx = new_states.len();
+                idx_mapping[old_idx] = Some(new_idx);
+                new_states.push(State::new());
+            }
+        }
+
+        for old_from in 0..self.states.len() {
+            let Some(new_from) = idx_mapping[old_from] else {
+                continue;
+            };
+
+            for (sym, old_to) in &self.states[old_from].transitions {
+                let Some(new_to) = idx_mapping[*old_to] else {
+                    panic!("Transition to unreachable state should have been filtered out by reachable_states()")
+                };
+
+                new_states[new_from]
+                    .transitions
+                    .push((*sym, new_to));
+            }
+        }
+
+        let new_accept = self
+            .accept
+            .iter()
+            .filter_map(|old_idx| idx_mapping[*old_idx])
+            .collect();
+
+        let new_start = idx_mapping[self.start]
+            .expect("start state should always be reachable");
+
+        Nfa {
+            states: new_states,
+            start: new_start,
+            accept: new_accept,
+        }
+    }
+
+    fn reachable_states(&self) -> HashSet<usize> {
+        let mut reachable = HashSet::new();
+        let mut stack = vec![self.start];
+
+        while let Some(state) = stack.pop() {
+            if reachable.insert(state) {
+                for (_, target) in &self.states[state].transitions {
+                    stack.push(*target);
+                }
+            }
+        }
+
         reachable
-    }
-
-    fn build_state_mapping(
-        &self,
-        ecloses: &[HashSet<usize>],
-        reachable: &[bool],
-    ) -> (HashMap<usize, usize>, Vec<State<Symbol>>, Vec<usize>) {
-        let mut state_mapping = HashMap::new();
-        let mut nfa_states = Vec::new();
-        let mut accept_states = Vec::new();
-
-        for (old_idx, &is_reachable) in reachable.iter().enumerate() {
-            if is_reachable {
-                let new_idx = nfa_states.len();
-                state_mapping.insert(old_idx, new_idx);
-                nfa_states.push(State::new());
-
-                if ecloses[old_idx].contains(&self.accept) {
-                    accept_states.push(new_idx);
-                }
-            }
-        }
-        (state_mapping, nfa_states, accept_states)
-    }
-
-    fn build_transitions(
-        &self,
-        ecloses: &[HashSet<usize>],
-        state_mapping: &HashMap<usize, usize>,
-        nfa_states: &mut Vec<State<Symbol>>,
-    ) {
-        for (&old_idx, &new_idx) in state_mapping {
-            let mut symbol_targets: HashMap<u8, HashSet<usize>> = HashMap::new();
-
-            for &e in &ecloses[old_idx] {
-                for (sym, target) in &self.states[e].transitions {
-                    if let Symbol::Byte(b) = sym {
-                        symbol_targets
-                            .entry(*b)
-                            .or_default()
-                            .extend(&ecloses[*target]);
-                    }
-                }
-            }
-
-            for (b, targets) in symbol_targets {
-                for target in targets {
-                    if let Some(&new_target) = state_mapping.get(&target) {
-                        nfa_states[new_idx]
-                            .transitions
-                            .push((Symbol::Byte(b), new_target));
-                    }
-                }
-            }
-        }
     }
 }
 
