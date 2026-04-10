@@ -1,5 +1,7 @@
 mod common;
 use regex_to_automata::{EpsilonNfa, Automaton, Nfa, Dfa};
+use common::{regex_strategy, input_string_strategy};
+use proptest::prelude::*;
 
 fn produce_all_automata_from_regex(regex: &str) -> (EpsilonNfa,Nfa,Dfa) {
     let enfa = EpsilonNfa::from_regex(regex, None).unwrap();
@@ -98,4 +100,29 @@ fn complex_pattern_accepts_valid_strings_and_rejects_invalid() {
         &["abb", "aabb", "babb", "aababb", "bababb"],
         &["", "ab", "aba", "abba"],
     );
+}
+
+proptest! {
+    #[test]
+    fn all_automata_agree_on_accept_reject(
+        regex in regex_strategy(),
+        input in input_string_strategy()
+    ) {
+        // Arrange: Build all three automata types from the same regex
+        let enfa = EpsilonNfa::from_regex(&regex, None).unwrap();
+        let nfa = enfa.to_nfa();
+        let dfa = nfa.to_dfa();
+        
+        // Act & Assert: All three should give identical accept/reject results
+        let enfa_accepts = enfa.accepts(&input);
+        let nfa_accepts = nfa.accepts(&input);
+        let dfa_accepts = dfa.accepts(&input);
+        
+        prop_assert_eq!(enfa_accepts, nfa_accepts, 
+            "EpsilonNfa and Nfa disagree on input '{}' for regex '{}'", input, regex);
+        prop_assert_eq!(nfa_accepts, dfa_accepts,
+            "Nfa and Dfa disagree on input '{}' for regex '{}'", input, regex);
+        prop_assert_eq!(enfa_accepts, dfa_accepts,
+            "EpsilonNfa and Dfa disagree on input '{}' for regex '{}'", input, regex);
+    }
 }
