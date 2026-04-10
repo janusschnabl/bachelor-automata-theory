@@ -2,6 +2,7 @@ mod common;
 use regex_to_automata::{EpsilonNfa, Automaton, Nfa, Dfa};
 use common::{regex_strategy, input_string_strategy};
 use proptest::prelude::*;
+use regex::Regex;
 
 fn produce_all_automata_from_regex(regex: &str) -> (EpsilonNfa,Nfa,Dfa) {
     let enfa = EpsilonNfa::from_regex(regex, None).unwrap();
@@ -124,5 +125,28 @@ proptest! {
             "Nfa and Dfa disagree on input '{}' for regex '{}'", input, regex);
         prop_assert_eq!(enfa_accepts, dfa_accepts,
             "EpsilonNfa and Dfa disagree on input '{}' for regex '{}'", input, regex);
+    }
+}
+
+fn oracle_accepts(regex: &str, input: &str) -> bool {
+    let anchored = format!("^(?:{})$", regex);
+    Regex::new(&anchored).unwrap().is_match(input)
+}
+
+proptest! {
+    #[test]
+    fn automata_match_regex_oracle(
+        regex in regex_strategy(),
+        input in input_string_strategy()
+    ) {
+        let enfa = EpsilonNfa::from_regex(&regex, None).unwrap();
+        let nfa = enfa.to_nfa();
+        let dfa = nfa.to_dfa();
+
+        let expected = oracle_accepts(&regex, &input);
+
+        prop_assert_eq!(enfa.accepts(&input), expected);
+        prop_assert_eq!(nfa.accepts(&input), expected);
+        prop_assert_eq!(dfa.accepts(&input), expected);
     }
 }
