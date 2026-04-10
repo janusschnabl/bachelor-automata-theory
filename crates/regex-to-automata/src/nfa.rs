@@ -8,6 +8,7 @@ pub struct Nfa {
     pub states: Vec<State<Symbol>>,
     pub start: usize,
     pub accept: Vec<usize>,
+    pub alphabet: HashSet<u8>,
 }
 
 impl EpsilonNfa {
@@ -69,6 +70,7 @@ impl EpsilonNfa {
             states,
             start: self.start,
             accept: accepting_states.into_iter().collect(),
+            alphabet: self.alphabet.clone(),
         }
     }
 }
@@ -117,6 +119,7 @@ impl Nfa {
             states: new_states,
             start: new_start,
             accept: new_accept,
+            alphabet: self.alphabet.clone(),
         }
     }
 
@@ -149,9 +152,7 @@ impl Automaton for Nfa {
     }
 
     fn alphabet(&self) -> &HashSet<u8> {
-        // NFA har ikke et eksplicit alfabet-felt som EpsilonNfa,
-        // så vi returnerer en tom reference — overvej at tilføje feltet
-        unimplemented!("Nfa mangler alphabet-felt — tilføj `pub alphabet: HashSet<u8>`")
+        &self.alphabet
     }
 
     fn get_states(&self) -> &Vec<State<Symbol>> {
