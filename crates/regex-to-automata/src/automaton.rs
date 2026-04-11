@@ -254,8 +254,6 @@ pub fn automaton_isomorphic<A: Automaton>(a: &A, b: &A) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::epsilon_nfa::Symbol;
-    use petgraph::visit::EdgeRef;
     use crate::nfa::Nfa;
 
     #[test]

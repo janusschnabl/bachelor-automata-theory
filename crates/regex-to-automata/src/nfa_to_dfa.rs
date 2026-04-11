@@ -75,11 +75,16 @@ impl Dfa {
         }
 
 
-        Dfa {
+        let completed_dfa = Dfa {
             states: states,
             start: state_indices[&initial_state],
             accept: accept_states,
             alphabet: alphabet,
+        };
+        
+        match completed_dfa.validate() {
+            Ok(()) => completed_dfa,
+            Err(e) => panic!("Constructed DFA is invalid: {}", e),
         }
     }
 

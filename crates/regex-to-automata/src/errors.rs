@@ -4,7 +4,7 @@ use std::fmt;
 pub enum Error {
     Parse(String),
     UnsupportedFeature(&'static str),
-    InvalidAutomaton(&'static str),
+    InvalidAutomaton(String),
     InvalidInput(String),
     Message(String),
 }
