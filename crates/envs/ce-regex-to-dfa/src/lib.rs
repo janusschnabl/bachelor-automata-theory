@@ -1,5 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
-use regex_to_automata::{EpsilonNfa, Automaton};
+use regex_to_automata::{EpsilonNfa,Dfa, Automaton};
 use serde::{Deserialize, Serialize};
 
 define_env!(RegexToDfaEnv);
@@ -26,29 +26,33 @@ impl Env for RegexToDfaEnv {
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
-            })?;
+            })?.to_nfa().to_dfa();
 
         Ok(Output { dot: nfa.to_dot() })
     }
 
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
-        //TODO: should we use other error types? ie not just InvalidInputForProgram.
         let expected = EpsilonNfa::from_regex(&_input.regex, None)
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
-            })?;
-        let produced = EpsilonNfa::from_dot(_output.dot.as_str())
-            .map_err(|e| EnvError::InvalidInputForProgram {
+            })?
+            .to_nfa()
+            .to_dfa();
+
+        let produced =
+            Dfa::from_dot(_output.dot.as_str()).map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             })?;
 
-        let is_isomorphic = produced.is_isomorphic_to(&expected);
-        if is_isomorphic 
-            {Ok(ValidationResult::Correct)} 
-        else 
-            {Ok(ValidationResult::Mismatch { reason:  "produced automaton is not isomorphic to expected".into() })}
+        if produced.is_isomorphic_to(&expected) {
+            Ok(ValidationResult::Correct)
+        } else {
+            Ok(ValidationResult::Mismatch {
+                reason: "produced automaton is not isomorphic to expected".into(),
+            })
+        }
     }
 }
 
