@@ -156,20 +156,20 @@ impl Automaton for Nfa {
         &self.alphabet
     }
 
-    fn get_states(&self) -> &Vec<State<u8>> {
+    fn get_states(&self) -> &Vec<State<Self::Label>> {
         &self.states
     }
 
-    fn get_states_mut(&mut self) -> &mut Vec<State<u8>> {
+    fn get_states_mut(&mut self) -> &mut Vec<State<Self::Label>> {
         &mut self.states
     }
 
-    fn encode_label(label: &u8) -> String {
+    fn encode_label(label: &Self::Label) -> String {
         let symbol = Symbol::Byte(*label);
         crate::epsilon_nfa::EpsilonNfa::encode_label(&symbol)
     }
 
-    fn decode_label(label: &str) -> Result<u8> {
+    fn decode_label(label: &str) -> Result<Self::Label> {
         let symbol = crate::epsilon_nfa::EpsilonNfa::decode_label(label)?;
         if let Symbol::Byte(b) = symbol {
             Ok(b)

@@ -123,7 +123,7 @@ impl Automaton for EpsilonNfa {
         &mut self.states
     }
 
-    fn encode_label(label: &Symbol) -> String {
+    fn encode_label(label: &Self::Label) -> String {
         match label {
             Symbol::Epsilon => "ε".to_string(),
             Symbol::Byte(b) => {
@@ -138,7 +138,7 @@ impl Automaton for EpsilonNfa {
         }
     }
 
-    fn decode_label(label: &str) -> Result<Symbol> {
+    fn decode_label(label: &str) -> Result<Self::Label> {
         if label == "ε" {
             Ok(Symbol::Epsilon)
         } else if label == "' '" {

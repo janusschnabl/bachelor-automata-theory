@@ -1,18 +1,18 @@
 use crate::automaton::State;
 use crate::epsilon_nfa::Symbol;
-use crate::{Automaton, Nfa, Result};
-use std::collections::{BTreeSet, HashSet, BTreeMap};
+use crate::{Automaton, Result};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone, Default)]
 pub struct Dfa {
-    pub states: Vec<State<Symbol>>,
+    pub states: Vec<State<u8>>,
     pub start: usize,
     pub accept: Vec<usize>,
     pub alphabet: HashSet<u8>,
 }
 
 impl Automaton for Dfa {
-    type Label = Symbol;
+    type Label = u8;
 
     fn start_state(&self) -> usize {
         self.start
@@ -34,23 +34,20 @@ impl Automaton for Dfa {
         &mut self.states
     }
 
-    fn encode_label(label: &Symbol) -> String {
-        // Genbrug EpsilonNfa's implementation
-        crate::epsilon_nfa::EpsilonNfa::encode_label(label)
+    fn encode_label(label: &Self::Label) -> String {
+        crate::nfa::Nfa::encode_label(label)
     }
 
-    fn decode_label(label: &str) -> Result<Symbol> {
-        crate::epsilon_nfa::EpsilonNfa::decode_label(label)
+    fn decode_label(label: &str) -> Result<Self::Label> {
+        crate::nfa::Nfa::decode_label(label)
     }
 
-    fn next_states(&self, state: usize, byte: u8) -> HashSet<usize> {
+    fn next_states(&self, state: usize, byte: Self::Label) -> HashSet<usize> {
         let mut next = HashSet::new();
-        for (symbol, target) in &self.states[state].transitions {
-            if let Symbol::Byte(b) = symbol {
-                if *b == byte {
-                    next.insert(*target);
-                    return next;
-                }
+        for (b, target) in &self.states[state].transitions {
+            if *b == byte {
+                next.insert(*target);
+                return next;
             }
         }
         next

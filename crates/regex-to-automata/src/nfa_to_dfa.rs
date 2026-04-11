@@ -1,6 +1,5 @@
 use crate::automaton::State;
-use crate::epsilon_nfa::Symbol;
-use crate::{Automaton, Nfa,Dfa};
+use crate::{Automaton, Nfa, Dfa};
 use std::collections::{BTreeSet, HashSet, BTreeMap};
 
 
@@ -56,7 +55,7 @@ impl Dfa {
 
     fn build_dfa_from_subsets(dfa: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>>, initial_state: BTreeSet<usize>, accepting_states: HashSet<BTreeSet<usize>>, alphabet: HashSet<u8>) -> Dfa {        
         let mut state_indices: BTreeMap<BTreeSet<usize>, usize> = BTreeMap::new();
-        let mut states: Vec<State<Symbol>> = vec![];
+        let mut states: Vec<State<u8>> = vec![];
         let mut accept_states: Vec<usize> = vec![];
 
         for (i, state_set) in dfa.keys().enumerate() {
@@ -71,7 +70,7 @@ impl Dfa {
             let from_index = state_indices[&state_set];
             for (byte, next_set) in transitions {
                 let to_index = state_indices[&next_set];
-                states[from_index].transitions.push((Symbol::Byte(byte), to_index));
+                states[from_index].transitions.push((byte, to_index));
             }
         }
 
