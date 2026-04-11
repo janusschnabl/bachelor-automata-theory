@@ -5,6 +5,7 @@ pub mod errors;
 pub mod nfa;
 pub mod dfa;
 pub mod regex;
+pub mod nfa_to_dfa;
 
 pub use crate::automaton::{Automaton, State};
 pub use crate::epsilon_nfa::{EpsilonNfa, Symbol};
