@@ -269,8 +269,8 @@ mod tests {
         nfa.set_start(s0);
         nfa.set_accept_states([s1].into()).unwrap();
 
-        nfa.add_transition(s0, Symbol::Byte(b'a'), s1);
-        nfa.add_transition(s0, Symbol::Byte(b'b'), s1);
+        nfa.add_transition(s0, b'a', s1);
+        nfa.add_transition(s0, b'b', s1);
 
         let graph = automaton_to_graph_impl(&nfa);
 

@@ -1,11 +1,12 @@
 use crate::automaton::State;
 use crate::epsilon_nfa::Symbol;
 use crate::{Automaton, EpsilonNfa, Result};
+use crate::errors::Error;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Default)]
 pub struct Nfa {
-    pub states: Vec<State<Symbol>>,
+    pub states: Vec<State<u8>>,
     pub start: usize,
     pub accept: Vec<usize>,
     pub alphabet: HashSet<u8>,
@@ -60,8 +61,8 @@ impl EpsilonNfa {
 
     fn build_nfa(&self, transitions_per_state: Vec<HashSet<(u8, usize)>>, accepting_states: HashSet<usize>) -> Nfa {
         let states = transitions_per_state.iter().map(|transitions| {
-            let state_transitions: Vec<(Symbol, usize)> = transitions.iter()
-                .map(|&(byte, target)| (Symbol::Byte(byte), target))
+            let state_transitions: Vec<(u8, usize)> = transitions.iter()
+                .map(|&(byte, target)| (byte, target))
                 .collect();
             State { transitions: state_transitions }
         }).collect();
@@ -141,7 +142,7 @@ impl Nfa {
 
 // Implementer Automaton-traitten så al generisk logik virker
 impl Automaton for Nfa {
-    type Label = Symbol;
+    type Label = u8;
 
     fn start_state(&self) -> usize {
         self.start
@@ -155,34 +156,35 @@ impl Automaton for Nfa {
         &self.alphabet
     }
 
-    fn get_states(&self) -> &Vec<State<Symbol>> {
+    fn get_states(&self) -> &Vec<State<u8>> {
         &self.states
     }
 
-    fn get_states_mut(&mut self) -> &mut Vec<State<Symbol>> {
+    fn get_states_mut(&mut self) -> &mut Vec<State<u8>> {
         &mut self.states
     }
 
-    fn encode_label(label: &Symbol) -> String {
-        // Genbrug EpsilonNfa's implementation
-        crate::epsilon_nfa::EpsilonNfa::encode_label(label) // eller kopier logikken
+    fn encode_label(label: &u8) -> String {
+        let symbol = Symbol::Byte(*label);
+        crate::epsilon_nfa::EpsilonNfa::encode_label(&symbol)
     }
 
-    fn decode_label(label: &str) -> Result<Symbol> {
-        crate::epsilon_nfa::EpsilonNfa::decode_label(label)
+    fn decode_label(label: &str) -> Result<u8> {
+        let symbol = crate::epsilon_nfa::EpsilonNfa::decode_label(label)?;
+        if let Symbol::Byte(b) = symbol {
+            Ok(b)
+        } else {
+            Err(Error::InvalidInput(format!("invalid label for NFA: {label}")))
+        }
     }
 
     fn next_states(&self, state: usize, byte: u8) -> HashSet<usize> {
         self.states[state]
             .transitions
             .iter()
-            .filter_map(|(sym, target)| {
-                if let Symbol::Byte(b) = sym {
-                    if *b == byte { Some(*target) } else { None }
-                } else {
-                    None
-                }
-            })
+            .filter_map(|(sym, target)| 
+               if *sym == byte { Some(*target) } 
+               else { None })
             .collect()
     }
 
