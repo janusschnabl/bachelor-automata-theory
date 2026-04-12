@@ -62,3 +62,61 @@ macro_rules! epsilon_nfa {
         }
     }};
 }
+
+#[macro_export]
+macro_rules! nfa {
+    (
+        start: $start:expr,
+        accept: [ $($accept_state:expr),* $(,)? ],
+        states: [
+            $(
+                $id:expr => [ $( ($sym:expr, $to:expr) ),* $(,)? ]
+            ),* $(,)?
+        ]
+    ) => {{
+        use regex_to_automata::{Nfa, State};
+        let mut states = Vec::new();
+        $(
+            states.push(State {
+                transitions: vec![
+                    $( ($sym, $to) ),*
+                ],
+            });
+        )*
+        Nfa {
+            states,
+            start: $start,
+            accept: vec![$($accept_state),*],
+            alphabet: Default::default(),
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! dfa {
+    (
+        start: $start:expr,
+        accept: [ $($accept_state:expr),* $(,)? ],
+        states: [
+            $(
+                $id:expr => [ $( ($sym:expr, $to:expr) ),* $(,)? ]
+            ),* $(,)?
+        ]
+    ) => {{
+        use regex_to_automata::{Dfa, State};
+        let mut states = Vec::new();
+        $(
+            states.push(State {
+                transitions: vec![
+                    $( ($sym, $to) ),*
+                ],
+            });
+        )*
+        Dfa {
+            states,
+            start: $start,
+            accept: vec![$($accept_state),*],
+            alphabet: Default::default(),
+        }
+    }};
+}
