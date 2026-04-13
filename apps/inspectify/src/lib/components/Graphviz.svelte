@@ -143,7 +143,7 @@
 
   /* Arrow heads - pink/magenta */
   div :global(polygon[fill='black']) {
-    fill: #d591d9;
+    fill: #dfbfff;
     stroke: none;
   }
 
@@ -159,7 +159,7 @@
     stroke: #85cc95 !important;
     stroke-width: 1.5 !important;
     fill: #6b7a8f !important;
-    filter: drop-shadow(0 0 8px #85cc95);
+    filter: drop-shadow(0 0 4px #85cc95);
   }
 
   /* Second ellipse (inner circle) - make it transparent */
@@ -169,7 +169,7 @@
 
   /* Edges - pink/magenta */
   div :global(path[stroke]) {
-    stroke: #d591d9 !important;
+    stroke: #dfbfff !important;
     stroke-width: 1.5 !important;
   }
 
