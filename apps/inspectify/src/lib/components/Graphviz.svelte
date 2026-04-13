@@ -13,6 +13,44 @@
     let enriched = dotStr;
     let initialNode: string | null = null;
 
+    // First pass: handle nodes that are both accepting and initial
+    enriched = enriched.replace(
+      /(\w+)\s*\[(.*?isAccepting=true.*?isInitial=true.*?)\];/g,
+      (match, node, attrs) => {
+        initialNode = node;
+        let cleanAttrs = attrs
+          .replace(/isAccepting=true/g, '')
+          .replace(/isInitial=true/g, '')
+          .trim();
+        cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
+
+        if (cleanAttrs) {
+          return `${node} [${cleanAttrs}, shape=doublecircle];`;
+        } else {
+          return `${node} [shape=doublecircle];`;
+        }
+      },
+    );
+
+    // Handle nodes that are both accepting and initial (alternate order)
+    enriched = enriched.replace(
+      /(\w+)\s*\[(.*?isInitial=true.*?isAccepting=true.*?)\];/g,
+      (match, node, attrs) => {
+        initialNode = node;
+        let cleanAttrs = attrs
+          .replace(/isAccepting=true/g, '')
+          .replace(/isInitial=true/g, '')
+          .trim();
+        cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
+
+        if (cleanAttrs) {
+          return `${node} [${cleanAttrs}, shape=doublecircle];`;
+        } else {
+          return `${node} [shape=doublecircle];`;
+        }
+      },
+    );
+
     // Extract and convert accepting states to double circles
     enriched = enriched.replace(/(\w+)\s*\[(.*?isAccepting=true.*?)\];/g, (match, node, attrs) => {
       let cleanAttrs = attrs.replace(/isAccepting=true/g, '').trim();
