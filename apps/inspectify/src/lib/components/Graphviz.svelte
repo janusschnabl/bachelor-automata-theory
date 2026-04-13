@@ -32,10 +32,34 @@
       cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
 
       if (cleanAttrs) {
-        return `${node} [${cleanAttrs}];`;
+        return `${node} [${cleanAttrs}, shape=circle];`;
       } else {
-        return `${node} [];`;
+        return `${node} [shape=circle];`;
       }
+    });
+
+    // Handle nodes with attributes - replace any shape with circle, or add circle if missing
+    enriched = enriched.replace(/(\w+)\s*\[([^\]]*)\];/g, (match, node, attrs) => {
+      if (node === '__start') return match;
+      // If shape=doublecircle is already there, don't change it
+      if (attrs.includes('shape=doublecircle')) return match;
+      // If it has a different shape, replace it with circle
+      if (attrs.includes('shape=')) {
+        const cleanedAttrs = attrs.replace(/shape=\w+/g, 'shape=circle');
+        return `${node} [${cleanedAttrs}];`;
+      }
+      // If no shape, add circle
+      if (attrs.trim()) {
+        return `${node} [${attrs}, shape=circle];`;
+      } else {
+        return `${node} [shape=circle];`;
+      }
+    });
+
+    // Handle nodes without attributes - add them with shape=circle
+    enriched = enriched.replace(/\n\s+(\w+)\s*;/g, (match, node) => {
+      if (node === '__start') return match;
+      return `\n  ${node} [shape=circle];`;
     });
 
     // Add __start node and arrow if we found an initial state
