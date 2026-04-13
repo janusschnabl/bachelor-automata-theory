@@ -7,7 +7,7 @@
   import { parseAndCompactDot } from '$lib/utils/dotHandler';
 
   const io = new Io('RegexToNfa', { regex: '' });
-  let mode = $state<'none' | 'compact'>('compact');
+  let mode = $state<'none' | 'compact'>('none');
 </script>
 
 <Env {io}>

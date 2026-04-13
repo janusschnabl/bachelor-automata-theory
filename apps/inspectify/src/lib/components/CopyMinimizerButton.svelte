@@ -35,21 +35,9 @@
       <button
         class="w-full rounded bg-slate-500 px-4 py-2 font-mono text-sm transition hover:bg-slate-400"
         {onclick}
-        onmouseenter={onMouseEnter}
-        onmouseleave={onMouseLeave}
       >
         {label}
       </button>
-      {#if hoveredOption && description}
-        <div
-          class="absolute bottom-full left-8 z-50 mb-2 rounded bg-slate-900 px-3 py-1 text-xs whitespace-nowrap text-slate-200 shadow-lg"
-        >
-          {description}
-          <div
-            class="absolute top-full left-0 border-4 border-transparent border-t-slate-900"
-          ></div>
-        </div>
-      {/if}
     </div>
   </InputOption>
 {/if}

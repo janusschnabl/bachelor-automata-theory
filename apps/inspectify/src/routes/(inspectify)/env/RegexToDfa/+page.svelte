@@ -9,7 +9,7 @@
   import { convertDotToMinimizer } from '$lib/utils/convertDotForMinimizer';
 
   const io = new Io('RegexToDfa', { regex: '' });
-  let mode = $state<'none' | 'compact' | 'extreme'>('compact');
+  let mode = $state<'none' | 'compact' | 'extreme'>('none');
 
   function copyMinimizerFormat(dotString: string) {
     try {
