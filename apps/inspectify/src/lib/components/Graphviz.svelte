@@ -26,9 +26,9 @@
         cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
 
         if (cleanAttrs) {
-          return `${node} [${cleanAttrs}, shape=doublecircle];`;
+          return `${node} [${cleanAttrs}, shape=doublecircle, class="accepting"];`;
         } else {
-          return `${node} [shape=doublecircle];`;
+          return `${node} [shape=doublecircle, class="accepting"];`;
         }
       },
     );
@@ -45,9 +45,9 @@
         cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
 
         if (cleanAttrs) {
-          return `${node} [${cleanAttrs}, shape=doublecircle];`;
+          return `${node} [${cleanAttrs}, shape=doublecircle, class="accepting"];`;
         } else {
-          return `${node} [shape=doublecircle];`;
+          return `${node} [shape=doublecircle, class="accepting"];`;
         }
       },
     );
@@ -82,6 +82,8 @@
       if (node === '__start') return match;
       // If shape=doublecircle is already there, don't change it
       if (attrs.includes('shape=doublecircle')) return match;
+      // If class=accepting, preserve it (for accepting nodes)
+      if (attrs.includes('class=accepting')) return match;
       // If it has a different shape, replace it with circle
       if (attrs.includes('shape=')) {
         const cleanedAttrs = attrs.replace(/shape=\w+/g, 'shape=circle');
