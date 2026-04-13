@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Graphviz } from '@hpcc-js/wasm-graphviz';
+  import { mirage } from 'ayu';
 
   interface Props {
     dot: string;
@@ -57,9 +58,9 @@
       cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
 
       if (cleanAttrs) {
-        return `${node} [${cleanAttrs}, shape=doublecircle];`;
+        return `${node} [${cleanAttrs}, shape=doublecircle, class="accepting"];`;
       } else {
-        return `${node} [shape=doublecircle];`;
+        return `${node} [shape=doublecircle, class="accepting"];`;
       }
     });
 
@@ -140,22 +141,47 @@
     background: transparent;
   }
 
+  /* Arrow heads - pink/magenta */
   div :global(polygon[fill='black']) {
-    fill: white;
+    fill: #d591d9;
     stroke: none;
   }
 
-  div :global(ellipse),
-  div :global(path) {
-    stroke: white;
+  /* Node circles - filled gray, no stroke by default */
+  div :global(ellipse) {
+    stroke: none !important;
+    stroke-width: 0 !important;
+    fill: #6b7a8f !important;
   }
 
+  /* Accepting nodes (double circles) - all ellipses in group get green stroke with glow */
+  div :global(g[class*='accepting'] ellipse) {
+    stroke: #85cc95 !important;
+    stroke-width: 1.5 !important;
+    fill: #6b7a8f !important;
+    filter: drop-shadow(0 0 8px #85cc95);
+  }
+
+  /* Second ellipse (inner circle) - make it transparent */
+  div :global(g[class*='accepting'] ellipse + ellipse) {
+    fill: transparent !important;
+  }
+
+  /* Edges - pink/magenta */
+  div :global(path[stroke]) {
+    stroke: #d591d9 !important;
+    stroke-width: 1.5 !important;
+  }
+
+  /* Edge labels */
   div :global(text) {
-    fill: white;
+    fill: white !important;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   }
 
+  /* Remove default white fills */
   div :global(polygon[fill='white']),
   div :global(circle[fill='white']) {
-    fill: transparent;
+    fill: transparent !important;
   }
 </style>
