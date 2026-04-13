@@ -1,22 +1,22 @@
-type NodeData = {
+export type NodeData = {
   id: string;
   isInitial: boolean;
   isAccepting: boolean;
 };
 
-type EdgeData = {
+export type EdgeData = {
   from: string;
   to: string;
   label: string;
 };
 
-type ParsedAutomaton = {
+export type ParsedAutomaton = {
   nodes: NodeData[];
   edges: EdgeData[];
 };
 
 // Helper function to parse nodes and edges from dot format
-function parseNodesAndEdges(dotString: string): ParsedAutomaton {
+export function parseNodesAndEdges(dotString: string): ParsedAutomaton {
   const nodeRegex = /^\s*(\w+)\s*(?:\[(.*?)\])?;/gm;
   const nodesMap = new Map<string, NodeData>();
   let nodeMatch;
