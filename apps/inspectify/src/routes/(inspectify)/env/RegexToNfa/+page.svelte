@@ -20,7 +20,7 @@
         <CompactLabelsInput bind:mode availableModes={['none', 'compact']} />
       </div>
       <div class="relative flex-1">
-        <div class="absolute inset-0 overflow-auto">
+        <div class="absolute inset-0 grid overflow-auto">
           <Graphviz
             dot={mode === 'none' ? output.dot || '' : parseAndCompactDot(output.dot || '')}
           />
