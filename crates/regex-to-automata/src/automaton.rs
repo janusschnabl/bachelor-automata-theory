@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::errors::Result;
 use petgraph::graph::Graph;
 use petgraph::algo::is_isomorphic_matching;
+use crate::dot::automaton_to_dot_impl;
 
 /// Generic state representation for any automaton
 #[derive(Debug, Clone)]
@@ -77,20 +78,17 @@ pub trait Automaton: Sized + Default {
         accepts_from_states(self, &current_states, word)
     }
 
-    /// Generates a DOT representation of the automaton
-    /// Default implementation uses encode_label for edge labels
+    /// Generates a DOT representation of the automaton using encode_label
     fn to_dot(&self) -> String {
         automaton_to_dot_impl(self)
     }
 
-    /// Parses a DOT representation and reconstructs the automaton
-    /// Default implementation parses via crate::dot::parse_dot_into_automaton
+    /// Parses a DOT representation and reconstructs the  using decode_label
     fn from_dot(dot: &str) -> Result<Self> {
         from_dot_default(dot)
     }
 
     /// Checks if two automata are isomorphic (structurally equivalent)
-    /// Default implementation uses generic graph isomorphism checking
     fn is_isomorphic_to(&self, other: &Self) -> bool {
         automaton_isomorphic(self, other)
     }
@@ -110,8 +108,7 @@ pub trait Automaton: Sized + Default {
     /// Sets the start state of the automaton
     fn set_start(&mut self, state: usize);
 
-    /// Sets the accept states of the automaton (implementation-specific behavior)
-    /// Returns an error if the states are invalid for this automaton type
+    /// Sets the accept states of the automaton
     fn set_accept_states(&mut self, states: HashSet<usize>) -> Result<()>;
 }
 
@@ -141,8 +138,6 @@ pub(crate) fn accepts_from_states<A: Automaton>(
 }
 
 /// Default implementation of from_dot parsing for any Automaton type
-/// Parse DOT, populate states, and apply start/accept configuration
-/// Can be called by type-specific overrides for validation
 pub(crate) fn from_dot_default<A: Automaton>(dot: &str) -> Result<A> {
     let mut automaton = A::default();
     let (start, accept_states) = crate::dot::parse_dot_into_automaton(&mut automaton, dot)?;
@@ -152,47 +147,6 @@ pub(crate) fn from_dot_default<A: Automaton>(dot: &str) -> Result<A> {
 }
 
 
-
-/// Generic helper for converting any Automaton to DOT format
-fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
-    let mut s = String::new();
-    s.push_str("digraph NFA {\n");
-    s.push_str("  rankdir=LR;\n");
-
-    let accept_states = automaton.accept_states();
-    let start = automaton.start_state();
-
-    // Declare all nodes with attributes
-    for i in 0..automaton.state_count() {
-        let mut attrs = Vec::new();
-
-        if i == start {
-            attrs.push("isInitial=true");
-        }
-        if accept_states.contains(&i) {
-            attrs.push("isAccepting=true");
-        }
-
-        if attrs.is_empty() {
-            s.push_str(&format!("  {};\n", i));
-        } else {
-            s.push_str(&format!("  {} [{}];\n", i, attrs.join(", ")));
-        }
-    }
-
-    s.push('\n');
-
-    // Add edges
-    for from in 0..automaton.state_count() {
-        for (label, to) in automaton.transitions_from(from) {
-            let encoded = A::encode_label(&label);
-            s.push_str(&format!("  {} -> {} [label=\"{}\"];\n", from, to, encoded));
-        }
-    }
-
-    s.push_str("}\n");
-    s
-}
 
 /// Node attributes for graph representation (used in isomorphism checking)
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

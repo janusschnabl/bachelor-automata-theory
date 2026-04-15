@@ -15,11 +15,8 @@ impl Nfa {
         Dfa::subset_construction(self)
     }
 }
-// TODO: add tests showing we get the correct construction modulo state names
 impl Dfa {
-    //implements subset construction algorithm to convert an NFA to a DFA
-    //NOTE: as we are making from enfa to dfa also, we are not prematurely refactoring this code until we have both versions.
-    //IDEA: if we have a working enfa -> dfa, then this entire thing might simply become cast nfa as enfa then run enfa->dfa
+    //implements subset construction algorithm to convert an NFA to a complete DFA 
     fn subset_construction(nfa: &Nfa) -> Dfa {
         let res = Dfa::subset_graph(nfa);
         Dfa::build_dfa_from_subsets(

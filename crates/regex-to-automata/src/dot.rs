@@ -106,3 +106,43 @@ fn parse_dot_id(id: &Id) -> Result<usize> {
     s.parse()
         .map_err(|_| Error::InvalidInput("node id must be integer".into()))
 }
+
+
+/// Generic helper for converting any Automaton to DOT format
+pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
+    let mut s = String::new();
+    s.push_str("digraph NFA {\n");
+    s.push_str("  rankdir=LR;\n");
+
+    let accept_states = automaton.accept_states();
+    let start = automaton.start_state();
+
+    for i in 0..automaton.state_count() {
+        let mut attrs = Vec::new();
+
+        if i == start {
+            attrs.push("isInitial=true");
+        }
+        if accept_states.contains(&i) {
+            attrs.push("isAccepting=true");
+        }
+
+        if attrs.is_empty() {
+            s.push_str(&format!("  {};\n", i));
+        } else {
+            s.push_str(&format!("  {} [{}];\n", i, attrs.join(", ")));
+        }
+    }
+
+    s.push('\n');
+
+    for from in 0..automaton.state_count() {
+        for (label, to) in automaton.transitions_from(from) {
+            let encoded = A::encode_label(&label);
+            s.push_str(&format!("  {} -> {} [label=\"{}\"];\n", from, to, encoded));
+        }
+    }
+
+    s.push_str("}\n");
+    s
+}

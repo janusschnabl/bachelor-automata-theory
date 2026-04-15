@@ -1,5 +1,5 @@
 use crate::automaton::State;
-use crate::{Automaton, Result};
+use crate::{Automaton, Result,Symbol,Error};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone, Default)]
@@ -81,11 +81,17 @@ impl Automaton for Dfa {
     }
 
     fn encode_label(label: &Self::Label) -> String {
-        crate::nfa::Nfa::encode_label(label)
+        let symbol = Symbol::Byte(*label);
+        crate::epsilon_nfa::EpsilonNfa::encode_label(&symbol)
     }
 
     fn decode_label(label: &str) -> Result<Self::Label> {
-        crate::nfa::Nfa::decode_label(label)
+        let symbol = crate::epsilon_nfa::EpsilonNfa::decode_label(label)?;
+        if let Symbol::Byte(b) = symbol {
+            Ok(b)
+        } else {
+            Err(Error::InvalidInput(format!("invalid label for DFA: {label}")))
+        }
     }
 
     fn next_states(&self, state: usize, byte: Self::Label) -> HashSet<usize> {

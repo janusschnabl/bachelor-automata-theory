@@ -91,7 +91,7 @@ impl fmt::Display for EpsilonNfa {
                 writeln!(f, "  --{}--> {}", symbol, target)?;
             }
 
-            writeln!(f)?; // blank line between states
+            writeln!(f)?;
         }
 
         Ok(())
@@ -158,12 +158,12 @@ impl Automaton for EpsilonNfa {
     fn next_states(&self, state: usize, byte: u8) -> HashSet<usize> {
         // From this state and all epsilon-reachable states, find byte transitions and epsilon-close results
         let mut next = HashSet::new();
-        let closure = self.epsilon_closure(state); // Epsilon-close the source first
+        let closure = self.epsilon_closure(state);
         for s in closure {
             for (symbol, target) in &self.states[s].transitions {
                 if let Symbol::Byte(b) = symbol {
                     if *b == byte {
-                        next.extend(self.epsilon_closure(*target)); // Epsilon-close the target
+                        next.extend(self.epsilon_closure(*target));
                     }
                 }
             }
