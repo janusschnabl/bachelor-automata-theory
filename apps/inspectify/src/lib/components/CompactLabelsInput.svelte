@@ -50,7 +50,7 @@
     <div class="flex w-full gap-2">
       {#each options as option}
         <button
-          class="flex-1 rounded px-4 py-2 font-mono text-sm transition {mode === option.value
+          class="cursor-pointer flex-1 rounded px-4 py-2 font-mono text-sm transition {mode === option.value
             ? 'bg-slate-500 hover:bg-slate-400'
             : 'bg-slate-800 hover:bg-slate-700'}"
           onclick={() => (mode = option.value)}

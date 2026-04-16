@@ -33,7 +33,7 @@
   <InputOption title="">
     <div class="relative">
       <button
-        class="w-full rounded bg-slate-500 px-4 py-2 font-mono text-sm transition hover:bg-slate-400"
+        class="w-full rounded bg-slate-500 px-4 py-2 font-mono text-sm transition hover:bg-slate-400 cursor-pointer" 
         {onclick}
       >
         {label}
