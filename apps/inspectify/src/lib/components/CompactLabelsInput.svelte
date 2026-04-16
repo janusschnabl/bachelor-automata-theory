@@ -20,7 +20,7 @@
     {
       label: 'Remove dead states',
       value: 'extreme' as const,
-      description: 'Combine edges and remove dead states, page 67 in the book in the book for more info',
+      description: 'Combine edges and remove dead states, page 67 in the book for more info',
     },
   ];
 
@@ -50,7 +50,8 @@
     <div class="flex w-full gap-2">
       {#each options as option}
         <button
-          class="cursor-pointer flex-1 rounded px-4 py-2 font-mono text-sm transition {mode === option.value
+          class="flex-1 cursor-pointer rounded px-4 py-2 font-mono text-sm transition {mode ===
+          option.value
             ? 'bg-slate-500 hover:bg-slate-400'
             : 'bg-slate-800 hover:bg-slate-700'}"
           onclick={() => (mode = option.value)}
