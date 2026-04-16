@@ -174,3 +174,55 @@ impl EpsilonNfa {
         Ok((start, accept))
     }
 }
+
+/// Generates a random valid regex using supported operators
+///
+/// # Arguments
+/// * `rng` - Random number generator
+/// * `depth` - Recursion depth for regex construction
+/// * `num_literals` - Number of literals to use from the alphabet (a, b, c, ... up to z)
+///
+/// # Errors
+/// Returns error if `num_literals` is 0 or greater than 26
+pub fn generate_random_regex<R: rand::Rng>(
+    rng: &mut R,
+    depth: usize,
+    num_literals: usize,
+) -> crate::Result<String> {
+    if num_literals == 0 || num_literals > 26 {
+        return Err(crate::Error::InvalidInput(
+            "num_literals must be between 1 and 26".to_string(),
+        ));
+    }
+
+    let literals: Vec<char> = ('a'..('a' as u8 + num_literals as u8) as char)
+        .collect();
+
+    Ok(generate_random_regex_recursively(rng, depth, &literals))
+}
+
+fn generate_random_regex_recursively<R: rand::Rng>(
+    rng: &mut R,
+    depth: usize,
+    literals: &Vec<char>,
+) -> String {
+    if depth == 0 {
+        return literals[rng.random_range(0..literals.len())].to_string();
+    }
+
+    match rng.random_range(0..5) {
+        0 => literals[rng.random_range(0..literals.len())].to_string(),
+        1 => format!(
+            "{}{}",
+            generate_random_regex_recursively(rng, depth - 1, literals),
+            generate_random_regex_recursively(rng, depth - 1, literals)
+        ),
+        2 => format!(
+            "{}|{}",
+            generate_random_regex_recursively(rng, depth - 1, literals),
+            generate_random_regex_recursively(rng, depth - 1, literals)
+        ),
+        3 => format!("({})*", generate_random_regex_recursively(rng, depth - 1, literals)),
+        _ => format!("({})+", generate_random_regex_recursively(rng, depth - 1, literals)),
+    }
+}

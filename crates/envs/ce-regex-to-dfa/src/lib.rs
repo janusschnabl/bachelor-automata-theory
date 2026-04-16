@@ -60,37 +60,8 @@ impl Generate for Input {
     type Context = ();
 
     fn gn<R: rand::Rng>(_cx: &mut Self::Context, rng: &mut R) -> Self {
-        //TODO: Some of this is basically also in the property tests, maybe we can move this to the library and import it here?
-        fn gen_regex<R: rand::Rng>(rng: &mut R, depth: usize) -> String {
-            const LITS: &[char] = &['a', 'b', 'c'];
-
-            if depth == 0 {
-                return LITS[rng.random_range(0..LITS.len())].to_string();
-            }
-
-            match rng.random_range(0..5) {
-                0 => LITS[rng.random_range(0..LITS.len())].to_string(),
-
-                1 => format!(
-                    "{}{}",
-                    gen_regex(rng, depth - 1),
-                    gen_regex(rng, depth - 1)
-                ),
-
-                2 => format!(
-                    "{}|{}",
-                    gen_regex(rng, depth - 1),
-                    gen_regex(rng, depth - 1)
-                ),
-
-                3 => format!("({})*", gen_regex(rng, depth - 1)),
-
-                _ => format!("({})", gen_regex(rng, depth - 1)),
-            }
-        }
-
         Self {
-            regex: gen_regex(rng, 5),
+            regex: regex_to_automata::generate_random_regex(rng, 5, 5).unwrap(),
         }
     }
 }

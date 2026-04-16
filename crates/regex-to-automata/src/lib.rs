@@ -13,4 +13,5 @@ pub use crate::epsilon_nfa::{EpsilonNfa, Symbol};
 pub use crate::errors::{Error, Result};
 pub use crate::nfa::Nfa;
 pub use crate::dfa::Dfa;
+pub use crate::regex::generate_random_regex;
 
