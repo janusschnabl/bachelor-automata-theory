@@ -13,14 +13,14 @@
       description: 'Show the original automaton without any modifications',
     },
     {
-      label: 'Compact',
+      label: 'Combine edges',
       value: 'compact' as const,
       description: 'Combine edges with the same source and destination',
     },
     {
-      label: 'Extreme',
+      label: 'Remove dead states',
       value: 'extreme' as const,
-      description: 'Edge combination and removal of states that cannot reach accepting states',
+      description: 'Combine edges and remove dead states, page 67 in the book in the book for more info',
     },
   ];
 
