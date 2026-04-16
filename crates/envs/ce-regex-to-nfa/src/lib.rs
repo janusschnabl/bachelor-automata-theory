@@ -1,5 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
-use regex_to_automata::{Automaton, EpsilonNfa, Nfa};
+use regex_to_automata::{Automaton, EpsilonNfa, Nfa,generate_random_regex};
 use serde::{Deserialize, Serialize};
 
 define_env!(RegexToNfaEnv);
@@ -61,7 +61,7 @@ impl Generate for Input {
 
     fn gn<R: rand::Rng>(_cx: &mut Self::Context, rng: &mut R) -> Self {
         Self {
-            regex: regex_to_automata::generate_random_regex(rng, 2, 3).unwrap(),
+            regex: generate_random_regex(rng, 2, 3).unwrap(),
         }
     }
 }
