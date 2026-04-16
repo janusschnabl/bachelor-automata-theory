@@ -1,23 +1,8 @@
 mod common;
-
 use common::{E, b, regex_strategy};
-use regex_to_automata::{EpsilonNfa, Automaton};
+use regex_to_automata::{EpsilonNfa, Nfa, Dfa, Automaton};
 use proptest::prelude::*;
 
-proptest! {
-    #[test]
-    fn dot_roundtrip_preserves_structure(regex in regex_strategy()) {
-        // Arrange
-        let nfa = EpsilonNfa::from_regex(&regex, None).unwrap();
-        
-        // Act
-        let dot = nfa.to_dot();
-        let parsed = EpsilonNfa::from_dot(&dot).unwrap();
-        
-        // Assert
-        prop_assert!(nfa.is_isomorphic_to(&parsed));
-    }
-}
 
 #[test]
 fn from_dot_parses_simple_linear() {
@@ -136,49 +121,60 @@ digraph NFA {
     assert!(result.is_err());
 }
 
-
-#[test]
-fn round_trip_to_dot_from_dot_produces_isomorphic_automaton() {
-    // Arrange
-    let original = EpsilonNfa::from_regex("(a|b)*abb", None).unwrap();
-
-    // Act
+fn test_epsilon_nfa_roundtrip(pattern: &str) {
+    let original = EpsilonNfa::from_regex(pattern, None).unwrap();
     let dot = original.to_dot();
     let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-    // Assert
-    assert!(original.is_isomorphic_to(&reconstructed));
+    assert!(
+        original.is_isomorphic_to(&reconstructed),
+        "EpsilonNfa roundtrip failed for pattern: {pattern}"
+    );
 }
 
-#[test]
-fn round_trip_empty_string() {
-    // Arrange
-    let original = EpsilonNfa::from_regex("", None).unwrap();
-
-    // Act
+fn test_nfa_roundtrip(pattern: &str) {
+    let original = EpsilonNfa::from_regex(pattern, None).unwrap().to_nfa();
     let dot = original.to_dot();
-    let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-    // Assert
-    assert!(original.is_isomorphic_to(&reconstructed));
+    let reconstructed = Nfa::from_dot(&dot).unwrap();
+    assert!(
+        original.is_isomorphic_to(&reconstructed),
+        "Nfa roundtrip failed for pattern: {pattern}"
+    );
 }
 
-#[test]
-fn round_trip_complex_pattern() {
-    // Arrange
-    let patterns = vec!["a", "ab", "a|b", "(a|b)*", "(ab)*c", "(a|b)*abb"];
+fn test_dfa_roundtrip(pattern: &str) {
+    let original = EpsilonNfa::from_regex(pattern, None).unwrap().to_nfa().to_dfa();
+    let dot = original.to_dot();
+    let reconstructed = Dfa::from_dot(&dot).unwrap();
+    assert!(
+        original.is_isomorphic_to(&reconstructed),
+        "Dfa roundtrip failed for pattern: {pattern}"
+    );
+}
 
+fn test_all_automaton_types_roundtrip(patterns: &[&str]) {
     for pattern in patterns {
-        let original = EpsilonNfa::from_regex(pattern, None).unwrap();
-
-        // Act
-        let dot = original.to_dot();
-        let reconstructed = EpsilonNfa::from_dot(&dot).unwrap();
-
-        // Assert
-        assert!(
-            original.is_isomorphic_to(&reconstructed),
-            "round-trip failed for pattern: {pattern}"
-        );
+        test_epsilon_nfa_roundtrip(pattern);
+        test_nfa_roundtrip(pattern);
+        test_dfa_roundtrip(pattern);
     }
+}
+
+proptest! {
+    #[test]
+    fn dot_roundtrip_all_types_preserves_structure(regex in regex_strategy()) {
+        test_epsilon_nfa_roundtrip(&regex);
+        test_nfa_roundtrip(&regex);
+        test_dfa_roundtrip(&regex);
+    }
+}
+
+#[test]
+fn round_trip_preserves_structure_all_types() {
+    let patterns = &["", "a", "ab", "a|b", "(a|b)*", "(ab)*c", "(a|b)*abb"];
+    test_all_automaton_types_roundtrip(patterns);
+}
+
+#[test]
+fn round_trip_empty_string_all_types() {
+    test_all_automaton_types_roundtrip(&[""]);
 }
