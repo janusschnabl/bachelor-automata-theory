@@ -402,6 +402,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ce-regex-to-dfa-direct"
+version = "0.2.14"
+dependencies = [
+ "ce-core",
+ "itertools 0.14.0",
+ "serde",
+ "serde_json",
+ "tapi",
+ "tracing",
+]
+
+[[package]]
 name = "ce-regex-to-enfa"
 version = "0.2.14"
 dependencies = [
@@ -451,6 +463,7 @@ dependencies = [
  "ce-interpreter",
  "ce-parser",
  "ce-regex-to-dfa",
+ "ce-regex-to-dfa-direct",
  "ce-regex-to-enfa",
  "ce-regex-to-nfa",
  "ce-security",

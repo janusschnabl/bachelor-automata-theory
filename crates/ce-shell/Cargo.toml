@@ -15,6 +15,7 @@ ce-core.workspace = true
 ce-interpreter.workspace = true
 ce-parser.workspace = true
 ce-regex-to-dfa.workspace = true
+ce-regex-to-dfa-direct.workspace = true
 ce-regex-to-enfa.workspace = true
 ce-regex-to-nfa.workspace = true
 ce-security.workspace = true
