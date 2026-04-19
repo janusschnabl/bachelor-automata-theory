@@ -81,3 +81,93 @@ impl Dfa {
         }
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use std::collections::BTreeSet;
+
+    fn regex_strategy() -> impl Strategy<Value = String> {
+        let literal = prop_oneof![
+            Just("a".to_string()),
+            Just("b".to_string()),
+            Just("c".to_string()),
+        ];
+
+        literal.prop_recursive(4, 16, 2, |inner| {
+            prop_oneof![
+                inner.clone().prop_map(|r| format!("({})*", r)),
+                inner.clone().prop_map(|r| format!("({})+", r)),
+                (inner.clone(), inner.clone()).prop_map(|(a, b)| format!("{}{}", a, b)),
+                (inner.clone(), inner.clone()).prop_map(|(a, b)| format!("{}|{}", a, b)),
+            ]
+        })
+    }
+
+    proptest! {
+        #[test]
+        fn subset_initial_state_is_start(regex in regex_strategy()) {
+            let enfa = crate::EpsilonNfa::from_regex(&regex, None).unwrap();
+            let result = Dfa::subset_graph_enfa(&enfa);
+            let epsilon_closure_start: BTreeSet<usize> = enfa
+                .epsilon_closure(enfa.start_state())
+                .into_iter()
+                .collect();
+
+            prop_assert_eq!(result.initial_state, epsilon_closure_start);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn subset_accepting_states_are_correct(regex in regex_strategy()) {
+            let enfa = crate::EpsilonNfa::from_regex(&regex, None).unwrap();
+            let result = Dfa::subset_graph_enfa(&enfa);
+
+            for subset in result.transitions.keys() {
+                let should_accept =
+                    subset.iter().any(|s| enfa.accept_states().contains(s));
+                let is_accepting =
+                    result.accepting_states.contains(subset);
+
+                prop_assert_eq!(
+                    is_accepting,
+                    should_accept,
+                    "Wrong accepting status for subset {:?}",
+                    subset
+                );
+            }
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn subset_transitions_match_nfa_union(regex in regex_strategy()) {
+            let enfa = crate::EpsilonNfa::from_regex(&regex, None).unwrap();
+            let result = Dfa::subset_graph_enfa(&enfa);
+
+            for (subset, transitions) in &result.transitions {
+                for symbol in &result.alphabet {
+                    let mut expected = BTreeSet::new();
+
+                    for state in subset {
+                        for next in enfa.next_states(*state, *symbol) {
+                            expected.insert(next);
+                        }
+                    }
+
+                    prop_assert_eq!(
+                        transitions.get(symbol),
+                        Some(&expected),
+                        "Mismatch for subset {:?} on symbol {:?}",
+                        subset,
+                        *symbol as char
+                    );
+                }
+            }
+        }
+    }
+}
