@@ -1,3 +1,4 @@
+use crate::epsilon_nfa::Symbol;
 use crate::nfa_to_dfa::SubsetConstructionResult;
 use crate::{Automaton, Dfa, EpsilonNfa};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
@@ -40,12 +41,23 @@ impl Dfa {
 
             let mut transitions: BTreeMap<u8, BTreeSet<usize>> = BTreeMap::new();
             for byte in &alphabet {
-                let mut next_states = BTreeSet::new();
+                let mut targets = BTreeSet::new();
+
                 for state in &current_subset {
-                    for next in enfa.next_states(*state, *byte) {
-                        next_states.insert(next);
+                    for (symbol, target) in &enfa.states[*state].transitions {
+                        if let Symbol::Byte(b) = symbol {
+                            if *b == *byte {
+                                targets.insert(*target);
+                            }
+                        }
                     }
                 }
+
+                let next_states: BTreeSet<usize> = targets
+                    .iter()
+                    .flat_map(|t| enfa.epsilon_closure(*t))
+                    .collect();
+
                 work_to_do.insert(next_states.clone());
                 transitions.insert(*byte, next_states);
             }
