@@ -207,11 +207,20 @@ fn generate_random_regex_recursively<R: rand::Rng>(
     literals: &Vec<char>,
 ) -> String {
     if depth == 0 {
+        if rng.random_range(0..100) < 5 {
+            return String::new();
+        }
         return literals[rng.random_range(0..literals.len())].to_string();
     }
 
     match rng.random_range(0..5) {
-        0 => literals[rng.random_range(0..literals.len())].to_string(),
+        0 => {
+            if rng.random_range(0..100) < 30 {
+                String::new()
+            } else {
+                literals[rng.random_range(0..literals.len())].to_string()
+            }
+        },
         1 => format!(
             "{}{}",
             generate_random_regex_recursively(rng, depth - 1, literals),
