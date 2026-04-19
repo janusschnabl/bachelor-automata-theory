@@ -407,6 +407,7 @@ version = "0.2.14"
 dependencies = [
  "ce-core",
  "itertools 0.14.0",
+ "regex-to-automata",
  "serde",
  "serde_json",
  "tapi",
