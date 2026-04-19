@@ -1,13 +1,13 @@
 use crate::automaton::State;
-use crate::{Automaton, Nfa, Dfa};
-use std::collections::{BTreeSet, HashSet, BTreeMap};
+use crate::{Automaton, Dfa, Nfa};
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct SubsetConstructionResult {
-    transitions: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>>,
-    initial_state: BTreeSet<usize>,
-    accepting_states: HashSet<BTreeSet<usize>>,
-    alphabet: HashSet<u8>,
+pub struct SubsetConstructionResult {
+    pub transitions: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>>,
+    pub initial_state: BTreeSet<usize>,
+    pub accepting_states: HashSet<BTreeSet<usize>>,
+    pub alphabet: HashSet<u8>,
 }
 
 impl Nfa {
@@ -16,7 +16,7 @@ impl Nfa {
     }
 }
 impl Dfa {
-    //implements subset construction algorithm to convert an NFA to a complete DFA 
+    //implements subset construction algorithm to convert an NFA to a complete DFA
     fn subset_construction(nfa: &Nfa) -> Dfa {
         let res = Dfa::subset_graph(nfa);
         Dfa::build_dfa_from_subsets(
@@ -25,14 +25,13 @@ impl Dfa {
             res.accepting_states,
             res.alphabet,
         )
-
     }
 
     fn subset_graph(nfa: &Nfa) -> SubsetConstructionResult {
-        let mut dfa: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>> = BTreeMap::new();   
-        let mut work_to_do= HashSet::new();
+        let mut dfa: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>> = BTreeMap::new();
+        let mut work_to_do = HashSet::new();
         let alphabet = nfa.alphabet().clone();
-        
+
         work_to_do.insert(BTreeSet::from([nfa.start]));
 
         while let Some(current_subset) = work_to_do.iter().next().cloned() {
@@ -42,7 +41,7 @@ impl Dfa {
             }
 
             let mut transitions: BTreeMap<u8, BTreeSet<usize>> = BTreeMap::new();
-            for byte in &alphabet {  
+            for byte in &alphabet {
                 let mut next_states = BTreeSet::new();
                 for state in &current_subset {
                     for next_state in nfa.next_states(*state, *byte) {
@@ -71,9 +70,13 @@ impl Dfa {
             alphabet,
         }
     }
-    
 
-    fn build_dfa_from_subsets(dfa: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>>, initial_state: BTreeSet<usize>, accepting_states: HashSet<BTreeSet<usize>>, alphabet: HashSet<u8>) -> Dfa {        
+    pub(crate) fn build_dfa_from_subsets(
+        dfa: BTreeMap<BTreeSet<usize>, BTreeMap<u8, BTreeSet<usize>>>,
+        initial_state: BTreeSet<usize>,
+        accepting_states: HashSet<BTreeSet<usize>>,
+        alphabet: HashSet<u8>,
+    ) -> Dfa {
         let mut state_indices: BTreeMap<BTreeSet<usize>, usize> = BTreeMap::new();
         let mut states: Vec<State<u8>> = vec![];
         let mut accept_states: Vec<usize> = vec![];
@@ -94,24 +97,19 @@ impl Dfa {
             }
         }
 
-
         let completed_dfa = Dfa {
-            states: states,
+            states,
             start: state_indices[&initial_state],
             accept: accept_states,
-            alphabet: alphabet,
+            alphabet,
         };
-        
+
         match completed_dfa.validate() {
             Ok(()) => completed_dfa,
             Err(e) => panic!("Constructed DFA is invalid: {}", e),
         }
     }
-
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -126,21 +124,14 @@ mod tests {
             Just("c".to_string()),
         ];
 
-        literal.prop_recursive(
-            4,
-            16,
-            2,
-            |inner| {
-                prop_oneof![
-                    inner.clone().prop_map(|r| format!("({})*", r)),
-                    inner.clone().prop_map(|r| format!("({})+", r)),
-                    (inner.clone(), inner.clone())
-                        .prop_map(|(a, b)| format!("{}{}", a, b)),
-                    (inner.clone(), inner.clone())
-                        .prop_map(|(a, b)| format!("{}|{}", a, b)),
-                ]
-            },
-        )
+        literal.prop_recursive(4, 16, 2, |inner| {
+            prop_oneof![
+                inner.clone().prop_map(|r| format!("({})*", r)),
+                inner.clone().prop_map(|r| format!("({})+", r)),
+                (inner.clone(), inner.clone()).prop_map(|(a, b)| format!("{}{}", a, b)),
+                (inner.clone(), inner.clone()).prop_map(|(a, b)| format!("{}|{}", a, b)),
+            ]
+        })
     }
 
     proptest! {

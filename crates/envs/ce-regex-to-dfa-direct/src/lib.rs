@@ -22,15 +22,14 @@ impl Env for RegexToDfaDirectEnv {
     type Meta = ();
 
     fn run(input: &Self::Input) -> ce_core::Result<Self::Output> {
-        let nfa = EpsilonNfa::from_regex(&input.regex, None)
+        let dfa = EpsilonNfa::from_regex(&input.regex, None)
             .map_err(|e| EnvError::InvalidInputForProgram {
                 message: e.to_string(),
                 source: None,
             })?
-            .to_nfa()
             .to_dfa();
 
-        Ok(Output { dot: nfa.to_dot() })
+        Ok(Output { dot: dfa.to_dot() })
     }
 
     fn validate(_input: &Self::Input, _output: &Self::Output) -> ce_core::Result<ValidationResult> {
@@ -39,7 +38,6 @@ impl Env for RegexToDfaDirectEnv {
                 message: e.to_string(),
                 source: None,
             })?
-            .to_nfa()
             .to_dfa();
 
         let produced =
