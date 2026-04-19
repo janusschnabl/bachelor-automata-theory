@@ -1,3 +1,5 @@
+import DotParser from 'dotparser';
+
 export type NodeData = {
   id: string;
   isInitial: boolean;
@@ -15,51 +17,107 @@ export type ParsedAutomaton = {
   edges: EdgeData[];
 };
 
-// Helper function to parse nodes and edges from dot format
+// Helper function to parse nodes and edges from dot format using dotparser library
 export function parseNodesAndEdges(dotString: string): ParsedAutomaton {
-  const nodeRegex = /^\s*(\w+)\s*(?:\[(.*?)\])?;/gm;
-  const nodesMap = new Map<string, NodeData>();
-  let nodeMatch;
+  try {
+    const ast = DotParser(dotString);
+    const nodesMap = new Map<string, NodeData>();
+    const edges: EdgeData[] = [];
 
-  while ((nodeMatch = nodeRegex.exec(dotString)) !== null) {
-    const id = nodeMatch[1];
-    const attrs = nodeMatch[2] || '';
-
-    // Skip non-numeric nodes like rankdir, __start, etc.
-    if (!/^\d+$/.test(id)) continue;
-
-    nodesMap.set(id, {
-      id,
-      isInitial: attrs.includes('isInitial=true'),
-      isAccepting: attrs.includes('isAccepting=true'),
-    });
-  }
-
-  // Parse edges and collect any nodes that appear in edges but weren't declared
-  const edgeRegex = /(\d+)\s*->\s*(\d+)\s*\[label="([^"]+)"\]/g;
-  const edges: EdgeData[] = [];
-  let edgeMatch;
-
-  while ((edgeMatch = edgeRegex.exec(dotString)) !== null) {
-    const from = edgeMatch[1];
-    const to = edgeMatch[2];
-    const label = edgeMatch[3];
-
-    // Ensure nodes exist in map (preserve existing attributes)
-    if (!nodesMap.has(from)) {
-      nodesMap.set(from, { id: from, isInitial: false, isAccepting: false });
-    }
-    if (!nodesMap.has(to)) {
-      nodesMap.set(to, { id: to, isInitial: false, isAccepting: false });
+    // The AST is an array with one graph object
+    if (!Array.isArray(ast) || ast.length === 0) {
+      throw new Error('Invalid DOT format');
     }
 
-    edges.push({ from, to, label });
-  }
+    const graph = ast[0];
 
-  return {
-    nodes: Array.from(nodesMap.values()),
-    edges,
-  };
+    // Process the AST children to extract nodes and edges
+    if (!Array.isArray(graph.children)) {
+      throw new Error('Invalid graph structure');
+    }
+
+    for (const stmt of graph.children) {
+      if (stmt.type === 'node_stmt') {
+        const nodeId = String(stmt.node_id.id);
+
+        // Skip non-numeric node IDs
+        if (!/^\d+$/.test(nodeId)) continue;
+
+        let isInitial = false;
+        let isAccepting = false;
+
+        // Parse node attributes
+        if (Array.isArray(stmt.attr_list)) {
+          for (const attr of stmt.attr_list) {
+            if (attr.id === 'isInitial' && attr.eq === 'true') {
+              isInitial = true;
+            }
+            if (attr.id === 'isAccepting' && attr.eq === 'true') {
+              isAccepting = true;
+            }
+          }
+        }
+
+        nodesMap.set(nodeId, {
+          id: nodeId,
+          isInitial,
+          isAccepting,
+        });
+      } else if (stmt.type === 'edge_stmt') {
+        // Extract node IDs from edge_list
+        if (!Array.isArray(stmt.edge_list) || stmt.edge_list.length < 2) {
+          continue;
+        }
+
+        // Get label if present
+        let label = '';
+        if (Array.isArray(stmt.attr_list)) {
+          for (const attr of stmt.attr_list) {
+            if (attr.id === 'label') {
+              label = String(attr.eq);
+              break;
+            }
+          }
+        }
+
+        // Process edges between consecutive nodes
+        for (let i = 0; i < stmt.edge_list.length - 1; i++) {
+          const fromNode = stmt.edge_list[i];
+          const toNode = stmt.edge_list[i + 1];
+
+          // Skip if nodes are not valid node_id type
+          if (fromNode.type !== 'node_id' || toNode.type !== 'node_id') {
+            continue;
+          }
+
+          const from = String(fromNode.id);
+          const to = String(toNode.id);
+
+          // Skip edges with non-numeric node IDs
+          if (!/^\d+$/.test(from) || !/^\d+$/.test(to)) {
+            continue;
+          }
+
+          // Ensure nodes exist in map
+          if (!nodesMap.has(from)) {
+            nodesMap.set(from, { id: from, isInitial: false, isAccepting: false });
+          }
+          if (!nodesMap.has(to)) {
+            nodesMap.set(to, { id: to, isInitial: false, isAccepting: false });
+          }
+
+          edges.push({ from, to, label });
+        }
+      }
+    }
+
+    return {
+      nodes: Array.from(nodesMap.values()),
+      edges,
+    };
+  } catch (error) {
+    throw new Error(`Failed to parse DOT format: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 export function parseAndCompactDot(dotString: string): string {
