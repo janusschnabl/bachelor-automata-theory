@@ -108,12 +108,26 @@ fn parse_dot_node_name(id: &Id) -> Result<String> {
         }
     };
 
-    Ok(s.to_string())
+    let name = if s.starts_with('"') && s.ends_with('"') {
+        &s[1..s.len() - 1]
+    } else {
+        s
+    };
+
+    Ok(name.to_string())
 }
 
 fn get_or_create_node_id(map: &mut HashMap<String, usize>, name: String) -> usize {
     let len = map.len();
     *map.entry(name).or_insert(len)
+}
+
+fn format_node_name(state: usize, start_state: usize) -> String {
+    if state == start_state {
+        "q▷".to_string()
+    } else {
+        format!("q{}", state)
+    }
 }
 
 
@@ -136,10 +150,12 @@ pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
             attrs.push("isAccepting=true");
         }
 
+        let node_name = format_node_name(i, start);
+
         if attrs.is_empty() {
-            s.push_str(&format!("  q{};\n", i));
+            s.push_str(&format!("  \"{}\";\n", node_name));
         } else {
-            s.push_str(&format!("  q{} [{}];\n", i, attrs.join(", ")));
+            s.push_str(&format!("  \"{}\" [{}];\n", node_name, attrs.join(", ")));
         }
     }
 
@@ -148,7 +164,9 @@ pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
     for from in 0..automaton.state_count() {
         for (label, to) in automaton.transitions_from(from) {
             let encoded = A::encode_label(&label);
-            s.push_str(&format!("  q{} -> q{} [label=\"{}\"];\n", from, to, encoded));
+            let from_name = format_node_name(from, start);
+            let to_name = format_node_name(to, start);
+            s.push_str(&format!("  \"{}\" -> \"{}\" [label=\"{}\"];\n", from_name, to_name, encoded));
         }
     }
 
