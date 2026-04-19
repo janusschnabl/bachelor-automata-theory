@@ -1,6 +1,8 @@
 mod common;
 
-use regex_to_automata::Automaton;
+use regex_to_automata::{Automaton, EpsilonNfa};
+use common::regex_strategy;
+use proptest::prelude::*;
 
 #[test]
 fn simple_nfa_converts_to_isomorphic_dfa() {
@@ -175,5 +177,25 @@ fn result_is_deterministic_and_complete() {
             seen_symbols.len(),
             alphabet.len()
         );
+    }
+}
+
+proptest! {
+    #[test]
+    fn dfa_construction_path_doesnt_matter(
+        regex in regex_strategy()
+    ) {
+        // Act
+        let enfa = EpsilonNfa::from_regex(&regex, None).unwrap();
+
+        // Act - Path 1: ENFA -> NFA -> DFA
+        let nfa = enfa.to_nfa();
+        let dfa_via_nfa = nfa.to_dfa();
+
+        // Act - Path 2: ENFA -> DFA (direct)
+        let dfa_direct = enfa.to_dfa();
+
+        // Assert: Both conversion paths should produce isomorphic DFAs
+        prop_assert!(dfa_direct.is_isomorphic_to(&dfa_via_nfa));
     }
 }

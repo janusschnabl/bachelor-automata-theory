@@ -7,6 +7,7 @@ pub const fn b(c: u8) -> Symbol { Symbol::Byte(c) }
 /// Generates random valid regexes using supported operators: *, +, concatenation, alternation
 pub fn regex_strategy() -> impl Strategy<Value = String> {
     let literal = prop_oneof![
+        Just("".to_string()),
         Just("a".to_string()),
         Just("b".to_string()),
         Just("c".to_string()),
