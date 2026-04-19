@@ -178,3 +178,83 @@ fn round_trip_preserves_structure_all_types() {
 fn round_trip_empty_string_all_types() {
     test_all_automaton_types_roundtrip(&[""]);
 }
+
+#[test]
+fn from_dot_parses_string_node_names() {
+    // Arrange
+    let dot = r#"
+digraph NFA {
+  rankdir=LR;
+  q0 [isInitial=true];
+  q1 [isAccepting=true];
+  q0 -> q1 [label="a"];
+}
+"#;
+
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot);
+    
+    // Assert
+    assert!(parsed.is_ok(), "Should parse graphs with string node names");
+}
+
+#[test]
+fn from_dot_parses_descriptive_node_names() {
+    // Arrange
+    let dot = r#"
+digraph NFA {
+  rankdir=LR;
+  read_input [isInitial=true];
+  validate_token;
+  accept_result [isAccepting=true];
+  read_input -> validate_token [label="a"];
+  validate_token -> accept_result [label="b"];
+}
+"#;
+
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot);
+    
+    // Assert
+    assert!(parsed.is_ok(), "Should parse graphs with descriptive state names");
+}
+
+#[test]
+fn from_dot_parses_mixed_case_node_names() {
+    // Arrange
+    let dot = r#"
+digraph NFA {
+  rankdir=LR;
+  q0 [isInitial=true];
+  q1;
+  q2 [isAccepting=true];
+  q0 -> q1 [label="a"];
+  q1 -> q2 [label="b"];
+}
+"#;
+
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot);
+    
+    // Assert
+    assert!(parsed.is_ok(), "Should parse graphs with mixed case state names");
+}
+
+#[test]
+fn from_dot_parses_underscore_node_names() {
+    // Arrange
+    let dot = r#"
+digraph NFA {
+  rankdir=LR;
+  q0 [isInitial=true];
+  q1 [isAccepting=true];
+  q0 -> q1 [label="a"];
+}
+"#;
+
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot);
+    
+    // Assert
+    assert!(parsed.is_ok(), "Should parse graphs with underscored state names");
+}

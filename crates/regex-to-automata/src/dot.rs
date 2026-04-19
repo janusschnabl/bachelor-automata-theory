@@ -1,6 +1,6 @@
 use crate::automaton::Automaton;
 use crate::errors::{Error, Result};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use graphviz_rust::dot_structures::{EdgeTy, Graph, Id, Stmt, Vertex};
 
@@ -15,6 +15,7 @@ pub(crate) fn parse_dot_into_automaton<A: Automaton>(
 
     let mut start = None;
     let mut accept_states = HashSet::new();
+    let mut node_id_map: HashMap<String, usize> = HashMap::new();
 
     let stmts = match parsed {
         Graph::DiGraph { stmts, .. } => stmts,
@@ -24,7 +25,8 @@ pub(crate) fn parse_dot_into_automaton<A: Automaton>(
     for stmt in stmts {
         match stmt {
             Stmt::Node(n) => {
-                let id = parse_dot_id(&n.id.0)?;
+                let node_name = parse_dot_node_name(&n.id.0)?;
+                let id = get_or_create_node_id(&mut node_id_map, node_name);
 
                 ensure_automaton_state(automaton, id);
 
@@ -50,8 +52,11 @@ pub(crate) fn parse_dot_into_automaton<A: Automaton>(
             Stmt::Edge(e) => {
                 if let EdgeTy::Pair(a, b) = e.ty {
                     if let (Vertex::N(a), Vertex::N(b)) = (a, b) {
-                        let from = parse_dot_id(&a.0)?;
-                        let to = parse_dot_id(&b.0)?;
+                        let from_name = parse_dot_node_name(&a.0)?;
+                        let to_name = parse_dot_node_name(&b.0)?;
+
+                        let from = get_or_create_node_id(&mut node_id_map, from_name);
+                        let to = get_or_create_node_id(&mut node_id_map, to_name);
 
                         ensure_automaton_state(automaton, from);
                         ensure_automaton_state(automaton, to);
@@ -93,7 +98,7 @@ fn ensure_automaton_state<A: Automaton>(automaton: &mut A, id: usize) {
     }
 }
 
-fn parse_dot_id(id: &Id) -> Result<usize> {
+fn parse_dot_node_name(id: &Id) -> Result<String> {
     let s = match id {
         Id::Plain(s) | Id::Escaped(s) | Id::Html(s) => s,
         Id::Anonymous(_) => {
@@ -103,8 +108,12 @@ fn parse_dot_id(id: &Id) -> Result<usize> {
         }
     };
 
-    s.parse()
-        .map_err(|_| Error::InvalidInput("node id must be integer".into()))
+    Ok(s.to_string())
+}
+
+fn get_or_create_node_id(map: &mut HashMap<String, usize>, name: String) -> usize {
+    let len = map.len();
+    *map.entry(name).or_insert(len)
 }
 
 
@@ -128,9 +137,9 @@ pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
         }
 
         if attrs.is_empty() {
-            s.push_str(&format!("  {};\n", i));
+            s.push_str(&format!("  q{};\n", i));
         } else {
-            s.push_str(&format!("  {} [{}];\n", i, attrs.join(", ")));
+            s.push_str(&format!("  q{} [{}];\n", i, attrs.join(", ")));
         }
     }
 
@@ -139,7 +148,7 @@ pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
     for from in 0..automaton.state_count() {
         for (label, to) in automaton.transitions_from(from) {
             let encoded = A::encode_label(&label);
-            s.push_str(&format!("  {} -> {} [label=\"{}\"];\n", from, to, encoded));
+            s.push_str(&format!("  q{} -> q{} [label=\"{}\"];\n", from, to, encoded));
         }
     }
 
