@@ -26,8 +26,15 @@ export function convertDotToMinimizer(dotString: string): string {
   }
   const alphabet = Array.from(alphabetSet).sort();
 
-  // Sort states by ID (numeric part)
-  const sortedStates = nodes.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+  // Sort states by ID (numeric part if possible, otherwise lexicographic)
+  const sortedStates = nodes.sort((a, b) => {
+    const aNum = parseInt(a.id);
+    const bNum = parseInt(b.id);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum;
+    }
+    return a.id.localeCompare(b.id);
+  });
 
   // Build output
   let result = '';
@@ -47,12 +54,18 @@ export function convertDotToMinimizer(dotString: string): string {
   // Transitions
   result += 'transitions:\n';
 
-  // Sort transitions by from state, then by to state
+  // Sort transitions by from state, then by to state (numeric if possible, otherwise lexicographic)
   const sortedEdges = edges.sort((a, b) => {
-    const aFrom = parseInt(a.from);
-    const bFrom = parseInt(b.from);
-    if (aFrom !== bFrom) return aFrom - bFrom;
-    return parseInt(a.to) - parseInt(b.to);
+    const aFromNum = parseInt(a.from);
+    const bFromNum = parseInt(b.from);
+    if (!isNaN(aFromNum) && !isNaN(bFromNum)) {
+      if (aFromNum !== bFromNum) return aFromNum - bFromNum;
+      const aToNum = parseInt(a.to);
+      const bToNum = parseInt(b.to);
+      if (!isNaN(aToNum) && !isNaN(bToNum)) return aToNum - bToNum;
+    }
+    if (a.from !== b.from) return a.from.localeCompare(b.from);
+    return a.to.localeCompare(b.to);
   });
 
   for (const edge of sortedEdges) {

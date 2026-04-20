@@ -16,7 +16,7 @@
 
     // First pass: handle nodes that are both accepting and initial
     enriched = enriched.replace(
-      /(\w+)\s*\[(.*?isAccepting=true.*?isInitial=true.*?)\];/g,
+      /("(?:[^"]*"|\w+))\s*\[(.*?isAccepting=true.*?isInitial=true.*?)\];/g,
       (match, node, attrs) => {
         initialNode = node;
         let cleanAttrs = attrs
@@ -35,7 +35,7 @@
 
     // Handle nodes that are both accepting and initial (alternate order)
     enriched = enriched.replace(
-      /(\w+)\s*\[(.*?isInitial=true.*?isAccepting=true.*?)\];/g,
+      /("(?:[^"]*"|\w+))\s*\[(.*?isInitial=true.*?isAccepting=true.*?)\];/g,
       (match, node, attrs) => {
         initialNode = node;
         let cleanAttrs = attrs
@@ -53,7 +53,7 @@
     );
 
     // Extract and convert accepting states to double circles
-    enriched = enriched.replace(/(\w+)\s*\[(.*?isAccepting=true.*?)\];/g, (match, node, attrs) => {
+    enriched = enriched.replace(/("(?:[^"]*"|\w+))\s*\[(.*?isAccepting=true.*?)\];/g, (match, node, attrs) => {
       let cleanAttrs = attrs.replace(/isAccepting=true/g, '').trim();
       cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
 
@@ -65,7 +65,7 @@
     });
 
     // Extract initial node and add __start node with arrow
-    enriched = enriched.replace(/(\w+)\s*\[(.*?isInitial=true.*?)\];/g, (match, node, attrs) => {
+    enriched = enriched.replace(/("(?:[^"]*"|\w+))\s*\[(.*?isInitial=true.*?)\];/g, (match, node, attrs) => {
       initialNode = node;
       let cleanAttrs = attrs.replace(/isInitial=true/g, '').trim();
       cleanAttrs = cleanAttrs.replace(/^,\s*/, '').replace(/\s*,$/, '').trim();
@@ -78,7 +78,7 @@
     });
 
     // Handle nodes with attributes - replace any shape with circle, or add circle if missing
-    enriched = enriched.replace(/(\w+)\s*\[([^\]]*)\];/g, (match, node, attrs) => {
+    enriched = enriched.replace(/("(?:[^"]*"|\w+))\s*\[([^\]]*)\];/g, (match, node, attrs) => {
       if (node === '__start') return match;
       // If shape=doublecircle is already there, don't change it
       if (attrs.includes('shape=doublecircle')) return match;
@@ -98,7 +98,7 @@
     });
 
     // Handle nodes without attributes - add them with shape=circle
-    enriched = enriched.replace(/\n\s+(\w+)\s*;/g, (match, node) => {
+    enriched = enriched.replace(/\n\s+("(?:[^"]*"|\w+))\s*;/g, (match, node) => {
       if (node === '__start') return match;
       return `\n  ${node} [shape=circle];`;
     });

@@ -4,6 +4,7 @@ export type NodeData = {
   id: string;
   isInitial: boolean;
   isAccepting: boolean;
+  additionalAttrs: string; // Store any other attributes as a string
 };
 
 export type EdgeData = {
@@ -40,20 +41,20 @@ export function parseNodesAndEdges(dotString: string): ParsedAutomaton {
       if (stmt.type === 'node_stmt') {
         const nodeId = String(stmt.node_id.id);
 
-        // Skip non-numeric node IDs
-        if (!/^\d+$/.test(nodeId)) continue;
-
         let isInitial = false;
         let isAccepting = false;
+        const otherAttrs: string[] = [];
 
         // Parse node attributes
         if (Array.isArray(stmt.attr_list)) {
           for (const attr of stmt.attr_list) {
             if (attr.id === 'isInitial' && attr.eq === 'true') {
               isInitial = true;
-            }
-            if (attr.id === 'isAccepting' && attr.eq === 'true') {
+            } else if (attr.id === 'isAccepting' && attr.eq === 'true') {
               isAccepting = true;
+            } else {
+              // Keep other attributes
+              otherAttrs.push(`${attr.id}=${attr.eq}`);
             }
           }
         }
@@ -62,6 +63,7 @@ export function parseNodesAndEdges(dotString: string): ParsedAutomaton {
           id: nodeId,
           isInitial,
           isAccepting,
+          additionalAttrs: otherAttrs.join(', '),
         });
       } else if (stmt.type === 'edge_stmt') {
         // Extract node IDs from edge_list
@@ -93,17 +95,12 @@ export function parseNodesAndEdges(dotString: string): ParsedAutomaton {
           const from = String(fromNode.id);
           const to = String(toNode.id);
 
-          // Skip edges with non-numeric node IDs
-          if (!/^\d+$/.test(from) || !/^\d+$/.test(to)) {
-            continue;
-          }
-
           // Ensure nodes exist in map
           if (!nodesMap.has(from)) {
-            nodesMap.set(from, { id: from, isInitial: false, isAccepting: false });
+            nodesMap.set(from, { id: from, isInitial: false, isAccepting: false, additionalAttrs: '' });
           }
           if (!nodesMap.has(to)) {
-            nodesMap.set(to, { id: to, isInitial: false, isAccepting: false });
+            nodesMap.set(to, { id: to, isInitial: false, isAccepting: false, additionalAttrs: '' });
           }
 
           edges.push({ from, to, label });
@@ -137,19 +134,25 @@ export function parseAndCompactDot(dotString: string): string {
   let result = 'digraph DFA {\n  rankdir=LR\n';
 
   // Add nodes with attributes, preserving initial and accepting states
-  // Sort nodes by ID to maintain consistent order
-  const sortedNodes = nodes.sort((a, b) => 
-    parseInt(a.id) - parseInt(b.id)
-  );
+  // Sort nodes by ID (try numeric if possible, otherwise lexicographic)
+  const sortedNodes = nodes.sort((a, b) => {
+    const aNum = parseInt(a.id);
+    const bNum = parseInt(b.id);
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      return aNum - bNum;
+    }
+    return a.id.localeCompare(b.id);
+  });
 
   for (const node of sortedNodes) {
-    if (node.isInitial || node.isAccepting) {
+    if (node.isInitial || node.isAccepting || node.additionalAttrs) {
       const attrs: string[] = [];
       if (node.isInitial) attrs.push('isInitial=true');
       if (node.isAccepting) attrs.push('isAccepting=true');
-      result += `  ${node.id} [${attrs.join(', ')}];\n`;
+      if (node.additionalAttrs) attrs.push(node.additionalAttrs);
+      result += `  "${node.id}" [${attrs.join(', ')}];\n`;
     } else {
-      result += `  ${node.id};\n`;
+      result += `  "${node.id}";\n`;
     }
   }
 
@@ -159,7 +162,7 @@ export function parseAndCompactDot(dotString: string): string {
   for (const [key, labels] of edgesMap.entries()) {
     const [from, to] = key.split('->');
     const sortedLabels = Array.from(labels).sort();
-    result += `  ${from} -> ${to} [label="${sortedLabels.join(',')}"];\n`;
+    result += `  "${from}" -> "${to}" [label="${sortedLabels.join(',')}"];\n`;
   }
 
   result += '}\n';
@@ -215,16 +218,24 @@ export function parseAndRemoveUnreachableStates(dotString: string): string {
   // Add only reachable nodes, preserving their attributes
   const sortedNodes = nodes
     .filter(node => reachableStates.has(node.id))
-    .sort((a, b) => parseInt(a.id) - parseInt(b.id));
+    .sort((a, b) => {
+      const aNum = parseInt(a.id);
+      const bNum = parseInt(b.id);
+      if (!isNaN(aNum) && !isNaN(bNum)) {
+        return aNum - bNum;
+      }
+      return a.id.localeCompare(b.id);
+    });
 
   for (const node of sortedNodes) {
-    if (node.isInitial || node.isAccepting) {
+    if (node.isInitial || node.isAccepting || node.additionalAttrs) {
       const attrs: string[] = [];
       if (node.isInitial) attrs.push('isInitial=true');
       if (node.isAccepting) attrs.push('isAccepting=true');
-      result += `  ${node.id} [${attrs.join(', ')}];\n`;
+      if (node.additionalAttrs) attrs.push(node.additionalAttrs);
+      result += `  "${node.id}" [${attrs.join(', ')}];\n`;
     } else {
-      result += `  ${node.id};\n`;
+      result += `  "${node.id}";\n`;
     }
   }
 
@@ -233,7 +244,7 @@ export function parseAndRemoveUnreachableStates(dotString: string): string {
   // Add only edges between reachable states
   for (const edge of edges) {
     if (reachableStates.has(edge.from) && reachableStates.has(edge.to)) {
-      result += `  ${edge.from} -> ${edge.to} [label="${edge.label}"];\n`;
+      result += `  "${edge.from}" -> "${edge.to}" [label="${edge.label}"];\n`;
     }
   }
 
