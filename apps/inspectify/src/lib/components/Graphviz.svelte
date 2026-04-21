@@ -117,7 +117,6 @@
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
   }
 
-  /* background */
   div :global(polygon[fill='white']),
   div :global(circle[fill='white']) {
     fill: transparent !important;
