@@ -15,13 +15,13 @@ pub trait EnvExt: Env {
 
 define_shell!(
     ce_calculator::CalcEnv[Calculator, "Calculator"],
+    ce_regex_to_enfa::RegexToEnfaEnv[RegexToEnfa, "RegEx to E-NFA"],
+    ce_regex_to_nfa::RegexToNfaEnv[RegexToNfa, "RegEx to NFA"],
+    ce_regex_to_dfa::RegexToDfaEnv[RegexToDfa, "RegEx to DFA"],
+    ce_regex_to_dfa_direct::RegexToDfaDirectEnv[RegexToDfaDirect, "RegEx to DFA Direct"],
     ce_compiler::CompilerEnv[Compiler, "Compiler"],
     ce_interpreter::InterpreterEnv[Interpreter, "Interpreter"],
     ce_parser::ParserEnv[Parser, "Parser"],
-    ce_regex_to_dfa::RegexToDfaEnv[RegexToDfa, "RegEx to DFA"],
-    ce_regex_to_dfa_direct::RegexToDfaDirectEnv[RegexToDfaDirect, "RegEx to DFA Direct"],
-    ce_regex_to_enfa::RegexToEnfaEnv[RegexToEnfa, "RegEx to E-NFA"],
-    ce_regex_to_nfa::RegexToNfaEnv[RegexToNfa, "RegEx to NFA"],
     ce_security::SecurityEnv[Security, "Security"],
     ce_sign::SignEnv[Sign, "Sign Analysis"],
 );
