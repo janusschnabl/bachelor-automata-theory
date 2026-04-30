@@ -241,38 +241,78 @@ export namespace ce_core {
     | { "type": "Mismatch", reason: string }
     | { "type": "TimeOut" };
 }
+export namespace ce_regex_to_dfa {
+  export type Input = {
+    regex: string
+  };
+  export type Output = {
+    dot: string
+  };
+}
+export namespace ce_regex_to_dfa_direct {
+  export type Input = {
+    regex: string
+  };
+  export type Output = {
+    dot: string
+  };
+}
+export namespace ce_regex_to_enfa {
+  export type Input = {
+    regex: string
+  };
+  export type Output = {
+    dot: string
+  };
+}
+export namespace ce_regex_to_nfa {
+  export type Input = {
+    regex: string
+  };
+  export type Output = {
+    dot: string
+  };
+}
 export namespace ce_shell {
   export type Envs =
     | { "analysis": "Calculator", "io": { input: Calculator.Input, output: Calculator.Output, meta: void, annotation: void } }
-    | { "analysis": "Parser", "io": { input: Parser.Input, output: Parser.Output, meta: void, annotation: void } }
+    | { "analysis": "RegexToEnfa", "io": { input: ce_regex_to_enfa.Input, output: ce_regex_to_enfa.Output, meta: void, annotation: void } }
+    | { "analysis": "RegexToNfa", "io": { input: ce_regex_to_nfa.Input, output: ce_regex_to_nfa.Output, meta: void, annotation: void } }
+    | { "analysis": "RegexToDfa", "io": { input: ce_regex_to_dfa.Input, output: ce_regex_to_dfa.Output, meta: void, annotation: void } }
+    | { "analysis": "RegexToDfaDirect", "io": { input: ce_regex_to_dfa_direct.Input, output: ce_regex_to_dfa_direct.Output, meta: void, annotation: void } }
     | { "analysis": "Compiler", "io": { input: Compiler.Input, output: Compiler.Output, meta: void, annotation: void } }
     | { "analysis": "Interpreter", "io": { input: Interpreter.Input, output: Interpreter.Output, meta: GCL.TargetDef[], annotation: void } }
     | { "analysis": "BiGCL", "io": { input: BiGCL.Input, output: BiGCL.Output, meta: void, annotation: void } }
     | { "analysis": "RiscV", "io": { input: RiscV.Input, output: RiscV.Output, meta: void, annotation: RiscV.Annotation } }
+    | { "analysis": "Parser", "io": { input: Parser.Input, output: Parser.Output, meta: void, annotation: void } }
     | { "analysis": "Security", "io": { input: SecurityAnalysis.Input, output: SecurityAnalysis.Output, meta: SecurityAnalysis.Meta, annotation: void } }
     | { "analysis": "Sign", "io": { input: SignAnalysis.Input, output: SignAnalysis.Output, meta: GCL.TargetDef[], annotation: void } };
   export type Analysis =
     | "Calculator"
-    | "Parser"
+    | "RegexToEnfa"
+    | "RegexToNfa"
+    | "RegexToDfa"
+    | "RegexToDfaDirect"
     | "Compiler"
     | "Interpreter"
     | "BiGCL"
     | "RiscV"
+    | "Parser"
     | "Security"
     | "Sign";
-  export const ANALYSIS: Analysis[] = ["Calculator", "Parser", "Compiler", "Interpreter", "BiGCL", "RiscV", "Security", "Sign"];
+  export const ANALYSIS: Analysis[] = ["Calculator", "RegexToEnfa", "RegexToNfa", "RegexToDfa", "RegexToDfaDirect", "Compiler", "Interpreter", "BiGCL", "RiscV", "Parser", "Security", "Sign"];
   export namespace io {
     export type Input = {
       analysis: ce_shell.Analysis,
       json: any,
       hash: ce_shell.io.Hash
     };
+    export type Hash = {
+      bytes: number[]
+    };
     export type Meta = {
       analysis: ce_shell.Analysis,
       json: any
-    };
-    export type Hash = {
-      bytes: number[]
     };
     export type Output = {
       analysis: ce_shell.Analysis,
@@ -367,19 +407,9 @@ export namespace inspectify {
     }
   }
   export namespace endpoints {
-    export type ReferenceExecution = {
-      meta: ce_shell.io.Meta,
-      output: (ce_shell.io.Output | null),
-      annotation: (ce_shell.io.Annotation | null),
-      error: (string | null)
-    };
     export type PublicEvent =
       | { "type": "Reset" }
       | { "type": "StateChanged", "value": inspectify.checko.scoreboard.PublicState };
-    export type GenerateParams = {
-      analysis: ce_shell.Analysis,
-      seed: (number | null)
-    };
     export type Event =
       | { "type": "Reset" }
       | { "type": "CompilationStatus", "value": { status: inspectify.endpoints.CompilationStatus } }
@@ -387,6 +417,16 @@ export namespace inspectify {
       | { "type": "JobsChanged", "value": { jobs: driver.job.JobId[] } }
       | { "type": "GroupsConfig", "value": { config: inspectify.checko.config.GroupsConfig } }
       | { "type": "ProgramsConfig", "value": { programs: inspectify.endpoints.Program[] } };
+    export type GenerateParams = {
+      analysis: ce_shell.Analysis,
+      seed: (number | null)
+    };
+    export type ReferenceExecution = {
+      meta: ce_shell.io.Meta,
+      output: (ce_shell.io.Output | null),
+      annotation: (ce_shell.io.Annotation | null),
+      error: (string | null)
+    };
     export type AnalysisExecution = {
       id: driver.job.JobId
     };

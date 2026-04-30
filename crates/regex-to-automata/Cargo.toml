@@ -1,0 +1,15 @@
+[package]
+name = "regex-to-automata"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+graphviz-rust = "0.9.7"
+petgraph.workspace = true
+proptest = "1.10.0"
+rand.workspace = true
+regex = "1.12.3"
+regex-syntax = "0.8.10"
