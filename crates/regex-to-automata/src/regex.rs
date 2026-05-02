@@ -9,9 +9,11 @@ impl EpsilonNfa {
         if !regex.is_ascii() {
             return Err(crate::Error::UnsupportedFeature("only ASCII regex supported"));
         }
-
-        if regex.contains('\\') {
-            return Err(crate::Error::UnsupportedFeature("backslash not supported"));
+        let dissalowed_chars = ['"', '$', '.', '?', '[', ']', '\\', '^', '{', '}'];
+        for &c in dissalowed_chars.iter() {
+            if regex.contains(c) {
+                return Err(crate::Error::InvalidInput(c.to_string()));
+            }
         }
 
         let ast = Parser::new().parse(regex)?;

@@ -1,7 +1,9 @@
 mod common;
 
-use regex_to_automata::{EpsilonNfa, Automaton};
+use regex_to_automata::{EpsilonNfa, Automaton, generate_random_regex};
 use common::{E, b};
+use proptest::prelude::*;
+use rand::SeedableRng;
 
 
 #[test]
@@ -265,12 +267,6 @@ fn from_regex_rejects_unsupported_quantifier() {
 }
 
 #[test]
-fn from_regex_accepts_space_in_literal() {
-    let result = EpsilonNfa::from_regex("a b", None);
-    assert!(result.is_ok());
-}
-
-#[test]
 fn from_regex_rejects_tab_in_literal() {
     let result = EpsilonNfa::from_regex("a\tb", None);
     assert!(result.is_err());
@@ -280,4 +276,77 @@ fn from_regex_rejects_tab_in_literal() {
 fn from_regex_rejects_newline_in_literal() {
     let result = EpsilonNfa::from_regex("a\nb", None);
     assert!(result.is_err());
+}
+
+#[test]
+fn from_regex_rejects_all_disallowed_characters() {
+    let disallowed = ['"', '$', '.', '?', '[', ']', '\\', '^', '{', '}'];
+    
+    for &c in &disallowed {
+        let regex_str = format!("a{}b", c);
+        let result = EpsilonNfa::from_regex(&regex_str, None);
+        assert!(
+            result.is_err(),
+            "expected '{}' to be rejected but it was accepted",
+            c
+        );
+    }
+}
+
+#[test]
+fn from_regex_accepts_all_allowed_literal_characters() {
+    let test_cases = vec![
+        ('a', "lowercase letter"),
+        ('Z', "uppercase letter"),
+        ('5', "digit"),
+        (' ', "space"),
+        ('!', "exclamation"),
+        ('#', "hash"),
+        ('%', "percent"),
+        ('&', "ampersand"),
+        ('\'', "apostrophe"),
+        ('-', "hyphen"),
+        ('/', "forward slash"),
+        (':', "colon"),
+        (';', "semicolon"),
+        ('<', "less than"),
+        ('=', "equals"),
+        ('>', "greater than"),
+        ('@', "at sign"),
+        ('_', "underscore"),
+        ('`', "backtick"),
+        ('~', "tilde"),
+    ];
+
+    for (c, desc) in test_cases {
+        let result = EpsilonNfa::from_regex(&c.to_string(), None);
+        assert!(result.is_ok(), "expected {} '{}' to be accepted", desc, c);
+    }
+}
+
+#[test]
+fn from_regex_accepts_space_between_literals() {
+    let result = EpsilonNfa::from_regex("a b c", None);
+    assert!(result.is_ok());
+}
+
+proptest! {
+    #[test]
+    fn prop_disallowed_chars_always_rejected(seed in 0..1000u64) {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+        let disallowed = ['"', '$', '.', '?', '[', ']', '\\', '^', '{', '}'];
+        
+        let regex_str = generate_random_regex(&mut rng, 2, 3).unwrap();
+        
+        for &c in &disallowed {
+            let invalid_regex = format!("{}{}{}",regex_str, c, "a");
+            let result = EpsilonNfa::from_regex(&invalid_regex, None);
+            prop_assert!(
+                result.is_err(),
+                "regex with disallowed character '{}' should be rejected: {}",
+                c,
+                invalid_regex
+            );
+        }
+    }
 }
