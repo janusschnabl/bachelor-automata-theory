@@ -124,7 +124,7 @@ fn get_or_create_node_id(map: &mut HashMap<String, usize>, name: String) -> usiz
 
 fn format_node_name(state: usize, start_state: usize) -> String {
     if state == start_state {
-        "q0".to_string()
+        "q▷".to_string()
     } else {
         format!("q{}", state)
     }
