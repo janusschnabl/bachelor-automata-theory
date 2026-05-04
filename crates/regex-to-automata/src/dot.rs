@@ -124,12 +124,11 @@ fn get_or_create_node_id(map: &mut HashMap<String, usize>, name: String) -> usiz
 
 fn format_node_name(state: usize, start_state: usize) -> String {
     if state == start_state {
-        "q▷".to_string()
+        "q0".to_string()
     } else {
         format!("q{}", state)
     }
 }
-
 
 /// Generic helper for converting any Automaton to DOT format
 pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
@@ -166,7 +165,10 @@ pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
             let encoded = A::encode_label(&label);
             let from_name = format_node_name(from, start);
             let to_name = format_node_name(to, start);
-            s.push_str(&format!("  \"{}\" -> \"{}\" [label=\"{}\"];\n", from_name, to_name, encoded));
+            s.push_str(&format!(
+                "  \"{}\" -> \"{}\" [label=\"{}\"];\n",
+                from_name, to_name, encoded
+            ));
         }
     }
 
