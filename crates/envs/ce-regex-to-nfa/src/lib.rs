@@ -1,4 +1,5 @@
 use ce_core::{Env, EnvError, Generate, ValidationResult, define_env, rand};
+use itertools::enumerate;
 use regex_to_automata::{Automaton, EpsilonNfa, Nfa,generate_random_regex};
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +30,13 @@ impl Env for RegexToNfaEnv {
                 source: None,
             })?
             .to_nfa();
+
+        if is_too_complex_to_visualize(&nfa) {
+            return Err(EnvError::InvalidInputForProgram {
+                message: "Automaton likely takes a long time to visualize and given it's complexity it won't be useful for learning".into(),
+                source: None,
+            });
+        }
 
         Ok(Output { dot: nfa.to_dot() })
     }
@@ -65,4 +73,19 @@ impl Generate for Input {
             regex: generate_random_regex(rng, 2, 3).unwrap(),
         }
     }
+}
+
+
+fn is_too_complex_to_visualize<A: Automaton>(automaton: &A) -> bool {
+    let states = automaton.get_states();
+    let node_count = states.len();
+    let mut edge_count = 0;
+    for state in states {
+        edge_count += state.transitions.len();
+    }
+    if node_count == 0{
+        return false;
+    }
+    let edge_per_node = edge_count / node_count;
+    edge_per_node > 7 && node_count > 10
 }
