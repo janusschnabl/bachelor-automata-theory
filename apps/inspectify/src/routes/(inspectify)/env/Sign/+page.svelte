@@ -89,9 +89,9 @@
 
   {#snippet outputView({ output, meta })}
     <div class="grid grid-cols-[auto_1fr]">
-      <div class="border-r border-t bg-slate-900">
+      <div class="border-t border-r bg-slate-900">
         <div
-          class="**:border-t grid w-full grid-flow-dense"
+          class="grid w-full grid-flow-dense **:border-t"
           style="grid-template-columns: min-content repeat({meta.length}, max-content);"
         >
           <div class="border-none"></div>

@@ -67,7 +67,7 @@
   {/snippet}
   {#snippet outputView({ input: cachedInput, output, meta })}
     <div class="grid min-h-0 grid-cols-[auto_1fr]">
-      <div class="overflow-auto border-r border-t bg-slate-900">
+      <div class="overflow-auto border-t border-r bg-slate-900">
         <div
           class="grid gap-x-4 px-4 py-2"
           style="grid-template-columns: max-content min-content repeat({Math.max(
