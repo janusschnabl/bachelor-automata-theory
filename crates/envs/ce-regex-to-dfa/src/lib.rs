@@ -63,7 +63,7 @@ impl Generate for Input {
 
     fn gn<R: rand::Rng>(_cx: &mut Self::Context, rng: &mut R) -> Self {
         Self {
-            regex: generate_random_regex(rng, 5, 5).unwrap(),
+            regex: generate_random_regex(rng, 5, 5,5).unwrap(),
         }
     }
 }

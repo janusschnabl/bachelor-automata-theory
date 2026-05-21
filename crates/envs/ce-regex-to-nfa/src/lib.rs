@@ -70,7 +70,7 @@ impl Generate for Input {
 
     fn gn<R: rand::Rng>(_cx: &mut Self::Context, rng: &mut R) -> Self {
         Self {
-            regex: generate_random_regex(rng, 2, 3).unwrap(),
+            regex: generate_random_regex(rng, 2, 3,3).unwrap(),
         }
     }
 }

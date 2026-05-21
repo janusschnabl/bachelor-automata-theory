@@ -336,7 +336,7 @@ proptest! {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
         let disallowed = ['"', '$', '.', '?', '[', ']', '\\', '^', '{', '}'];
         
-        let regex_str = generate_random_regex(&mut rng, 2, 3).unwrap();
+        let regex_str = generate_random_regex(&mut rng, 2, 3,5).unwrap();
         
         for &c in &disallowed {
             let invalid_regex = format!("{}{}{}",regex_str, c, "a");

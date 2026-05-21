@@ -190,6 +190,7 @@ pub fn generate_random_regex<R: rand::Rng>(
     rng: &mut R,
     depth: usize,
     num_literals: usize,
+    max_literal_chain_len: usize,
 ) -> crate::Result<String> {
     if num_literals == 0 || num_literals > 26 {
         return Err(crate::Error::InvalidInput(
@@ -197,16 +198,28 @@ pub fn generate_random_regex<R: rand::Rng>(
         ));
     }
 
+    if max_literal_chain_len < 1 {
+        return Err(crate::Error::InvalidInput(
+            "max_literal_chain_len must be at least 1".to_string(),
+        ));
+    }
+
     let literals: Vec<char> = ('a'..('a' as u8 + num_literals as u8) as char)
         .collect();
 
-    Ok(generate_random_regex_recursively(rng, depth, &literals))
+    let regex = generate_random_regex_recursively(rng, depth, &literals, max_literal_chain_len);
+    if depth > 0 && regex.chars().all(|c| literals.contains(&c)) {
+        Ok(generate_random_regex_recursively(rng, depth, &literals, max_literal_chain_len))
+    } else {
+        Ok(regex)
+    }
 }
 
 fn generate_random_regex_recursively<R: rand::Rng>(
     rng: &mut R,
     depth: usize,
     literals: &Vec<char>,
+    max_literal_chain_len: usize,
 ) -> String {
     if depth == 0 {
         if rng.random_range(0..100) < 5 {
@@ -215,7 +228,7 @@ fn generate_random_regex_recursively<R: rand::Rng>(
         return literals[rng.random_range(0..literals.len())].to_string();
     }
 
-    match rng.random_range(0..5) {
+    match rng.random_range(0..6) {
         0 => {
             if rng.random_range(0..100) < 30 {
                 String::new()
@@ -223,17 +236,30 @@ fn generate_random_regex_recursively<R: rand::Rng>(
                 literals[rng.random_range(0..literals.len())].to_string()
             }
         },
-        1 => format!(
-            "{}{}",
-            generate_random_regex_recursively(rng, depth - 1, literals),
-            generate_random_regex_recursively(rng, depth - 1, literals)
-        ),
+        1 => generate_literal_chain(rng, literals, max_literal_chain_len),
         2 => format!(
-            "{}|{}",
-            generate_random_regex_recursively(rng, depth - 1, literals),
-            generate_random_regex_recursively(rng, depth - 1, literals)
+            "{}{}",
+            generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len),
+            generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len)
         ),
-        3 => format!("({})*", generate_random_regex_recursively(rng, depth - 1, literals)),
-        _ => format!("({})+", generate_random_regex_recursively(rng, depth - 1, literals)),
+        3 => format!(
+            "{}|{}",
+            generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len),
+            generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len)
+        ),
+        4 => format!("({})*", generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len)),
+        _ => format!("({})+", generate_random_regex_recursively(rng, depth - 1, literals, max_literal_chain_len)),
     }
+}
+
+fn generate_literal_chain<R: rand::Rng>(
+    rng: &mut R,
+    literals: &[char],
+    max_len: usize,
+) -> String {
+    let len = rng.random_range(2..=max_len);
+
+    (0..len)
+        .map(|_| literals[rng.random_range(0..literals.len())])
+        .collect()
 }
