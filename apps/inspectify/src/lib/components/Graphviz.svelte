@@ -14,17 +14,19 @@
   function enrichDot(dotStr: string): string {
     try {
       const { nodes, edges } = parseNodesAndEdges(dotStr);
-      let initialNode: string | null = null;
+      const initialNodes: string[] = [];
 
       for (const node of nodes) {
         if (node.isInitial) {
-          initialNode = node.id;
-          break;
+          initialNodes.push(node.id);
         }
       }
       let enriched = 'digraph DFA {\n  rankdir=LR\n';
-      if (initialNode) {
-        enriched += `  __start [label="", shape=none]\n  __start -> "${initialNode}"\n`;
+      if (initialNodes.length > 0) {
+        enriched += `  __start [label="", shape=none]\n`;
+        for (const initialNode of initialNodes) {
+          enriched += `  __start -> "${initialNode}"\n`;
+        }
       }
       for (const node of nodes) {
         const attrs: string[] = [];
