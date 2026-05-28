@@ -129,7 +129,7 @@ fn format_node_name(state: usize, start_state: usize) -> String {
 /// Generic helper for converting any Automaton to DOT format
 pub(crate) fn automaton_to_dot_impl<A: Automaton>(automaton: &A) -> String {
     let mut s = String::new();
-    s.push_str("digraph NFA {\n");
+    s.push_str("digraph Automaton {\n");
     s.push_str("  rankdir=LR;\n");
 
     let accept_states = automaton.accept_states();
