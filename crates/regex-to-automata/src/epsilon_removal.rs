@@ -40,7 +40,7 @@ impl EpsilonNfa {
         let mut transitions: HashSet<u8> = HashSet::new();
     
         for &state in states {
-            for (symbol, target) in &self.states[state].transitions {
+            for (symbol, _target) in &self.states[state].transitions {
                 if let Symbol::Byte(b) = symbol {
                     transitions.insert(*b);
                 }
