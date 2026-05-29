@@ -275,3 +275,50 @@ fn decode_label_rejects_invalid_input() {
     // Act & Assert
     assert!(EpsilonNfa::decode_label(invalid_label).is_err());
 }
+
+#[test]
+fn symbol_encoding_decoding_comprehensive() {
+    // Test cases: (symbol, expected_encoding)
+    let test_cases = vec![
+        //epsilon, graphic ascii
+        (Symbol::Epsilon, "ε"),
+        (Symbol::Byte(b'A'), "A"),
+        (Symbol::Byte(b'z'), "z"),
+        (Symbol::Byte(b'0'), "0"),
+        (Symbol::Byte(b' '), "' '"),
+        //non-graphic bytes
+        (Symbol::Byte(0x00), "0x00"),
+        (Symbol::Byte(0x1F), "0x1F"),
+        (Symbol::Byte(0x7F), "0x7F"),
+        (Symbol::Byte(0xFF), "0xFF"),
+    ];
+
+    for (symbol, expected_encoding) in test_cases {
+        let encoded = EpsilonNfa::encode_label(&symbol);
+        assert_eq!(encoded, expected_encoding, "Encoding mismatch for {:?}", symbol);
+
+        let decoded = EpsilonNfa::decode_label(&encoded).unwrap();
+        assert_eq!(decoded, symbol, "Decoding mismatch for {}", expected_encoding);
+
+        let re_encoded = EpsilonNfa::encode_label(&decoded);
+        assert_eq!(re_encoded, encoded, "Roundtrip mismatch for {:?}", symbol);
+    }
+}
+
+#[test]
+fn decode_label_invalid_cases() {
+    // Invalid inputs that should fail
+    let invalid_cases = vec![
+        "0xGG",  // Invalid hex characters
+        "0x",    // Incomplete hex
+        "0x1",   // Hex too short
+        "xyz",   // Not a valid label
+    ];
+
+    for label in invalid_cases {
+        assert!(
+            EpsilonNfa::decode_label(label).is_err(),
+            "Expected error for label: {}", label
+        );
+    }
+}

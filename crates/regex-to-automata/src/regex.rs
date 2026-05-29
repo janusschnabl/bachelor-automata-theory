@@ -48,7 +48,7 @@ impl EpsilonNfa {
                 if b > 255 {
                     return Err(crate::Error::UnsupportedFeature("non ASCII literal"));
                 }
-                self.build_literal(&[b as u8])
+                self.build_literal(b as u8)
             }
 
             Ast::Alternation(alt) => self.build_alternation(&alt.asts),
@@ -158,21 +158,10 @@ impl EpsilonNfa {
         Ok((start, accept))
     }
 
-    fn build_literal(&mut self, bytes: &[u8]) -> Result<(usize, usize)> {
-        assert!(!bytes.is_empty());
-
+    fn build_literal(&mut self, byte: u8) -> Result<(usize, usize)> {
         let start = self.add_state();
-        let mut accept = self.add_state();
-        self.add_transition(start, Symbol::Byte(bytes[0]), accept);
-
-        for &b in &bytes[1..] {
-            let next_start = self.add_state();
-            let next_accept = self.add_state();
-            self.add_transition(next_start, Symbol::Byte(b), next_accept);
-            self.add_transition(accept, Symbol::Epsilon, next_start);
-            accept = next_accept;
-        }
-
+        let accept = self.add_state();
+        self.add_transition(start, Symbol::Byte(byte), accept);
         Ok((start, accept))
     }
 }

@@ -63,41 +63,6 @@ impl EpsilonNfa {
     }
 }
 
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Symbol::Epsilon => write!(f, "ε"),
-            Symbol::Byte(b) => {
-                if b.is_ascii_graphic() {
-                    write!(f, "{}", *b as char)
-                } else {
-                    write!(f, "0x{:02X}", b)
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Display for EpsilonNfa {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, state) in self.states.iter().enumerate() {
-            writeln!(f, "State {}:", i)?;
-
-            if state.transitions.is_empty() {
-                writeln!(f, "  (no outgoing transitions)")?;
-            }
-
-            for (symbol, target) in &state.transitions {
-                writeln!(f, "  --{}--> {}", symbol, target)?;
-            }
-
-            writeln!(f)?;
-        }
-
-        Ok(())
-    }
-}
-
 impl Automaton for EpsilonNfa {
     type Label = Symbol;
 
