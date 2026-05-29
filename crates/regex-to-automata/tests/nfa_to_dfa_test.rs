@@ -199,3 +199,200 @@ proptest! {
         prop_assert!(dfa_direct.is_isomorphic_to(&dfa_via_nfa));
     }
 }
+
+#[test]
+fn deterministic_chain_remains_isomorphic() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [3],
+        states: [
+            0 => [(b'a', 1)],
+            1 => [(b'b', 2)],
+            2 => [(b'c', 3)],
+            3 => [],
+        ]
+    };
+    nfa.alphabet = [b'a', b'b', b'c'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [3],
+        states: [
+            0 => [(b'a', 1), (b'b', 4), (b'c', 4)],
+            1 => [(b'a', 4), (b'b', 2), (b'c', 4)],
+            2 => [(b'a', 4), (b'b', 4), (b'c', 3)],
+            3 => [(b'a', 4), (b'b', 4), (b'c', 4)],
+            4 => [(b'a', 4), (b'b', 4), (b'c', 4)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a', b'b', b'c'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
+
+#[test]
+fn nondeterminism_with_different_transitions() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [3],
+        states: [
+            0 => [(b'a', 1), (b'a', 2)],
+            1 => [(b'b', 3)],
+            2 => [],
+            3 => [],
+        ]
+    };
+    nfa.alphabet = [b'a', b'b'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [2],
+        states: [
+            0 => [(b'a', 1), (b'b', 3)],
+            1 => [(b'a', 3), (b'b', 2)],
+            2 => [(b'a', 3), (b'b', 3)],
+            3 => [(b'a', 3), (b'b', 3)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a', b'b'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
+
+#[test]
+fn start_state_is_accepting() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [0, 1],
+        states: [
+            0 => [(b'a', 1)],
+            1 => [],
+        ]
+    };
+    nfa.alphabet = [b'a'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [0, 1],
+        states: [
+            0 => [(b'a', 1)],
+            1 => [(b'a', 2)],
+            2 => [(b'a', 2)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
+
+#[test]
+fn no_transitions_from_accepting_start() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [0],
+        states: [
+            0 => [],
+        ]
+    };
+    nfa.alphabet = [b'a'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [0],
+        states: [
+            0 => [(b'a', 1)],
+            1 => [(b'a', 1)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
+
+#[test]
+fn reconverging_paths_with_different_symbols() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [3],
+        states: [
+            0 => [(b'a', 1), (b'b', 2)],
+            1 => [(b'c', 3)],
+            2 => [(b'c', 3)],
+            3 => [],
+        ]
+    };
+    nfa.alphabet = [b'a', b'b', b'c'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [2],
+        states: [
+            0 => [(b'a', 1), (b'b', 3), (b'c', 4)],
+            1 => [(b'a', 4), (b'b', 4), (b'c', 2)],
+            2 => [(b'a', 4), (b'b', 4), (b'c', 4)],
+            3 => [(b'a', 4), (b'b', 4), (b'c', 2)],
+            4 => [(b'a', 4), (b'b', 4), (b'c', 4)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a', b'b', b'c'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
+
+#[test]
+fn self_loops_in_nondeterministic_state() {
+    // Arrange
+    let mut nfa = nfa! {
+        start: 0,
+        accept: [2],
+        states: [
+            0 => [(b'a', 1)],
+            1 => [(b'a', 1), (b'b', 2)],
+            2 => [],
+        ]
+    };
+    nfa.alphabet = [b'a', b'b'].iter().copied().collect();
+    
+    let mut expected_dfa = dfa! {
+        start: 0,
+        accept: [2],
+        states: [
+            0 => [(b'a', 1), (b'b', 3)],
+            1 => [(b'a', 1), (b'b', 2)],
+            2 => [(b'a', 3), (b'b', 3)],
+            3 => [(b'a', 3), (b'b', 3)],
+        ]
+    };
+    expected_dfa.alphabet = [b'a', b'b'].iter().copied().collect();
+
+    // Act
+    let result_dfa = nfa.to_dfa();
+
+    // Assert
+    assert!(result_dfa.is_isomorphic_to(&expected_dfa));
+}
