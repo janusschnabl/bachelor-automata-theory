@@ -258,3 +258,22 @@ digraph NFA {
     // Assert
     assert!(parsed.is_ok(), "Should parse graphs with underscored state names");
 }
+
+#[test]
+fn from_dot_parses_compiler_dot_style() {
+    // Arrange
+    let dot = r#"digraph G {
+        q0[label="q0", isInitial=true]; q0 -> q1[label="a"]; q1[label="q1"];
+        q0[label="q0"]; q0 -> q1[label="b"]; q1[label="q1"];
+        q0[label="q0"]; q0 -> q1[label="c"]; q1[label="q1"];
+        q0[label="q0"]; q0 -> q1[label="d"]; q1[label="q1"];
+        q0[label="q0"]; q0 -> q1[label="e"]; q1[label="q1"];
+        q1[label="q1"]; q1 -> q2[label="f"]; q2[label="q2", isAccepting=true];
+    }"#;
+
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot);
+
+    // Assert
+    assert!(parsed.is_ok(), "Should parse compiler-style DOT output");
+}
