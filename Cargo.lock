@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "ce-bigcl"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -331,7 +331,7 @@ dependencies = [
 
 [[package]]
 name = "ce-calculator"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -345,7 +345,7 @@ dependencies = [
 
 [[package]]
 name = "ce-compiler"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -362,7 +362,7 @@ dependencies = [
 
 [[package]]
 name = "ce-core"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "futures-util",
  "gcl",
@@ -378,7 +378,7 @@ dependencies = [
 
 [[package]]
 name = "ce-interpreter"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -392,7 +392,7 @@ dependencies = [
 
 [[package]]
 name = "ce-parser"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -457,7 +457,7 @@ dependencies = [
 
 [[package]]
 name = "ce-riscv"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-bigcl",
  "ce-core",
@@ -474,7 +474,7 @@ dependencies = [
 
 [[package]]
 name = "ce-security"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "gcl",
@@ -488,7 +488,7 @@ dependencies = [
 
 [[package]]
 name = "ce-shell"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-bigcl",
  "ce-calculator",
@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "ce-sign"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "bitflags 2.11.0",
  "ce-core",
@@ -547,7 +547,7 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "checkr"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-shell",
  "clap",
@@ -558,7 +558,7 @@ dependencies = [
 
 [[package]]
 name = "chip"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "clap",
  "indexmap",
@@ -576,7 +576,7 @@ dependencies = [
 
 [[package]]
 name = "chip-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "camino",
  "chip",
@@ -597,7 +597,7 @@ dependencies = [
 
 [[package]]
 name = "chip-wasm"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chip",
  "comfy-table",
@@ -933,7 +933,7 @@ checksum = "498cfcded997a93eb31edd639361fa33fd229a8784e953b37d71035fe3890b7b"
 
 [[package]]
 name = "driver"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "ce-shell",
@@ -1146,7 +1146,7 @@ dependencies = [
 
 [[package]]
 name = "gcl"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "indexmap",
  "itertools 0.14.0",
@@ -1205,7 +1205,7 @@ checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
 
 [[package]]
 name = "gitty"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "color-eyre",
@@ -1637,7 +1637,7 @@ dependencies = [
 
 [[package]]
 name = "inspectify"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "axum",
  "ce-core",
@@ -2729,7 +2729,7 @@ dependencies = [
 
 [[package]]
 name = "riscvy"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "indexmap",
  "itertools 0.14.0",
@@ -3142,7 +3142,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stdx"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "lz4_flex",
  "once_cell",
@@ -4303,7 +4303,7 @@ checksum = "32ac00cd3f8ec9c1d33fb3e7958a82df6989c42d747bd326c822b1d625283547"
 
 [[package]]
 name = "xtask"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "ce-core",
  "clap",
