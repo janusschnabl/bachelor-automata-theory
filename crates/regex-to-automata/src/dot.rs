@@ -122,7 +122,7 @@ fn get_or_create_node_id(map: &mut HashMap<String, usize>, name: String) -> usiz
     *map.entry(name).or_insert(len)
 }
 
-fn format_node_name(state: usize, start_state: usize) -> String {
+fn format_node_name(state: usize, _start_state: usize) -> String {
     format!("q{}", state)
 }
 

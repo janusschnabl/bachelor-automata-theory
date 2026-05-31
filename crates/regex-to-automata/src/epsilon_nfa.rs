@@ -1,6 +1,5 @@
 use crate::{Automaton, Error, Result};
 use std::collections::HashSet;
-use std::fmt;
 
 #[derive(Debug, Clone, Default)]
 pub struct EpsilonNfa {
