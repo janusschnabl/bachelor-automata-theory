@@ -104,7 +104,7 @@ impl Automaton for EpsilonNfa {
     }
 
     fn decode_label(label: &str) -> Result<Self::Label> {
-        if label == "ε" {
+        if label == "ε" || label == "ϵ" {
             Ok(Symbol::Epsilon)
         } else if label == "' '" {
             Ok(Symbol::Byte(b' '))

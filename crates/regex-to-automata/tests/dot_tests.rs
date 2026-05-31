@@ -36,15 +36,46 @@ digraph NFA {
 fn from_dot_parses_epsilon_transitions() {
     // Arrange
     let dot = r#"
-digraph NFA {
-  rankdir=LR;
-  0 [isInitial=true];
-  1;
-  2 [isAccepting=true];
-  0 -> 1 [label="ε"];
-  1 -> 2 [label="a"];
+        digraph NFA {
+        rankdir=LR;
+        0 [isInitial=true];
+        1;
+        2 [isAccepting=true];
+        0 -> 1 [label="ε"];
+        1 -> 2 [label="a"];
+        }
+        "#;
+
+    let expected = epsilon_nfa! {
+        start: 0,
+        accept: 2,
+        states: [
+            0 => [(E, 1)],
+            1 => [(b(b'a'), 2)],
+            2 => [],
+        ]
+    };
+    
+    // Act
+    let parsed = EpsilonNfa::from_dot(dot).unwrap();
+    
+    // Assert
+    assert!(parsed.is_isomorphic_to(&expected));
 }
-"#;
+
+#[test]
+fn from_dot_parses_other_epsilon_transitions() {
+    // Arrange
+    let dot = r#"
+        digraph NFA {
+        rankdir=LR;
+        0 [isInitial=true];
+        1;
+        2 [isAccepting=true];
+        0 -> 1 [label="ϵ"]; #other epsilon symbol
+        1 -> 2 [label="a"];
+        }
+        "#;
 
     let expected = epsilon_nfa! {
         start: 0,
