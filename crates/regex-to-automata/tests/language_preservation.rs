@@ -150,3 +150,23 @@ proptest! {
         prop_assert_eq!(dfa.accepts(&input), expected);
     }
 }
+
+proptest! {
+    #[test]
+    fn automata_match_regex_oracle_for_many_inputs(
+        regex in regex_strategy(),
+        inputs in prop::collection::vec(input_string_strategy(), 1..500)
+    ) {
+        let enfa = EpsilonNfa::from_regex(&regex, None).unwrap();
+        let nfa = enfa.to_nfa();
+        let dfa = nfa.to_dfa();
+
+        for input in inputs {
+            let expected = oracle_accepts(&regex, &input);
+
+            prop_assert_eq!(enfa.accepts(&input), expected);
+            prop_assert_eq!(nfa.accepts(&input), expected);
+            prop_assert_eq!(dfa.accepts(&input), expected);
+        }
+    }
+}
