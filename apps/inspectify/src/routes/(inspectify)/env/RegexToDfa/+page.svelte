@@ -43,7 +43,7 @@
         </div>
         <div class="absolute bottom-4 left-4 z-10">
           <CopyMinimizerButton
-            label="Copy in automaton Format"
+            label="Copy In Automaton Format"
             description="Export automaton in minimizer format"
             onclick={() => copyMinimizerFormat(output.dot || '')}
             showWhen={mode === 'none'}
